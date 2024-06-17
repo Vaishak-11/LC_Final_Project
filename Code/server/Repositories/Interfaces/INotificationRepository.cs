@@ -3,8 +3,7 @@ using RecommendationEngineServer.Repositories.Generic;
 
 namespace RecommendationEngineServer.Repositories.Interfaces
 {
-    public interface IRoleRepository : IGenericRepository<Role>
+    public interface INotificationRepository : IGenericRepository<Notification>
     {
-        Task<Role> GetRoleByName(string name);
     }
 }

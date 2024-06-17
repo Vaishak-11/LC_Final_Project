@@ -9,17 +9,18 @@ namespace RecommendationEngineServer.Context
 
         public virtual DbSet<User> Users { get; set; }
         public virtual DbSet<Role> Roles { get; set; }
-        public virtual DbSet<Menu> Menus { get; set; }
+        public virtual DbSet<FoodItem> FoodItems { get; set; }
         public virtual DbSet<Feedback> Feedbacks { get; set; }
-        public virtual DbSet<Recommendation> Recommendations { get; set; }
-        public virtual DbSet<Vote> Votes { get; set; }
+        public virtual DbSet<RecommendedMenu> RecommendedMenus { get; set; }
+        public virtual DbSet<Order> Orders { get; set; }
+        public virtual DbSet<OrderItem> OrderItems { get; set; }
         public virtual DbSet<Employee> Employees { get; set; }
         public virtual DbSet<Notification> Notifications { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder
-                .UseSqlServer("Data Source=ITT-VAISHAK-S;Database=RecommendationEngine;Trusted_Connection=True")
+                .UseSqlServer("Data Source=ITT-VAISHAK-S;Database=RecommendationEngine1;Trusted_Connection=True")
                 .UseLazyLoadingProxies();
         }
 
@@ -38,30 +39,35 @@ namespace RecommendationEngineServer.Context
                 .HasForeignKey(f => f.UserId);
 
             modelBuilder.Entity<Feedback>()
-                .HasOne(f => f.Menu)
+                .HasOne(f => f.FoodItem)
                 .WithMany()
-                .HasForeignKey(f => f.MenuId);
+                .HasForeignKey(f => f.FoodItemId);
 
-            modelBuilder.Entity<Recommendation>()
+            modelBuilder.Entity<RecommendedMenu>()
                 .HasOne(f => f.User)
                 .WithMany()
                 .HasForeignKey(f => f.UserId);
 
-            modelBuilder.Entity<Recommendation>()
-                .HasOne(f => f.Menu)
+            modelBuilder.Entity<RecommendedMenu>()
+                .HasOne(f => f.FoodItem)
                 .WithMany()
-                .HasForeignKey(f => f.MenuId);
+                .HasForeignKey(f => f.FoodItemId);
 
-            modelBuilder.Entity<Vote>()
+            modelBuilder.Entity<Order>()
                .HasOne(v => v.User)
                .WithMany()
                .HasForeignKey(v => v.UserId);
 
-            modelBuilder.Entity<Vote>()
-                .HasOne(v => v.Recommendation)
+            modelBuilder.Entity<OrderItem>()
+                .HasOne(v => v.RecommendedMenu)
                 .WithMany()
-                .HasForeignKey(v => v.RecommendationId)
+                .HasForeignKey(v => v.MenuId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrderItem>()
+                .HasOne(v => v.Order)
+                .WithMany()
+                .HasForeignKey(v => v.OrderId);
 
             modelBuilder.Entity<Employee>()
                .HasOne(v => v.User)

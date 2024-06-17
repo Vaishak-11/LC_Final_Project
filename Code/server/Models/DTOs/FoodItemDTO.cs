@@ -1,10 +1,10 @@
 ﻿using RecommendationEngineServer.Models.Enums;
 
-namespace RecommendationEngineServer.Models.Entities
+namespace RecommendationEngineServer.Models.DTOs
 {
-    public class Menu
+    public class FoodItemDTO
     {
-        public int MenuId { get; set; }
+        public int FoodItemId { get; set; }
 
         public string ItemName { get; set; }
 
