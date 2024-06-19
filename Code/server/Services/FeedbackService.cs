@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using RecommendationEngineServer.Helpers;
 using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Models.Entities;
 using RecommendationEngineServer.Repositories.Interfaces;
@@ -12,42 +13,49 @@ namespace RecommendationEngineServer.Services
     {
         private readonly IFeedbackRepository _feedBackRepository;
         private readonly IFoodItemRepository _foodItemRepository;
+        private readonly IOrderItemRepository _orderItemRepository;
         private readonly IMapper _mapper;
 
-        public FeedbackService(IFeedbackRepository feedBackRepository, IFoodItemRepository foodItemRepository, IMapper mapper)
+        public FeedbackService(IFeedbackRepository feedBackRepository, IFoodItemRepository foodItemRepository, IMapper mapper, IOrderItemRepository orderItemRepository)
         {
             _feedBackRepository = feedBackRepository;
             _foodItemRepository = foodItemRepository;
             _mapper = mapper;
+            _orderItemRepository = orderItemRepository;
         }
 
         public async Task<ServerResponse> AddFeedback(FeedbackDTO feedback)
         {
             ServerResponse response = new ServerResponse();
 
-            if (feedback != null)
+            try
             {
-                FoodItem item = await _foodItemRepository.GetByItemName(feedback.ItemName);
-                
-                if (item == null)
+                if (feedback == null)
                 {
-                    response.Name = "Error";
-                    response.Value = "This itemName doesnt exist";
-
-                    return response;
+                    throw new ArgumentException("Invalid feedback details. Enter proper details.");
                 }
 
-                Feedback newfeedback = _mapper.Map<FeedbackDTO, Feedback>(feedback);
-                newfeedback.FoodItemId = item.FoodItemId;
-                int feedbackId = await _feedBackRepository.Add(newfeedback);
+                FoodItem item = await _foodItemRepository.GetByItemName(feedback.ItemName) ?? throw new Exception("This item name doesn't exist."); ;
 
-                response.Name = "AddFeedback";
-                response.Value = (feedbackId > 0) ? "Thank you for you feedback." : "Adding Feedback failed.";
+                bool hasOrdered = await HasUserOrderedItem(feedback.UserId, item.FoodItemId);
+
+                if (hasOrdered)
+                {
+                    Feedback newfeedback = _mapper.Map<FeedbackDTO, Feedback>(feedback);
+                    newfeedback.FoodItemId = item.FoodItemId;
+                    int feedbackId = await _feedBackRepository.Add(newfeedback);
+
+                    response.Name = "AddFeedback";
+                    response.Value = (feedbackId > 0) ? "Thank you for you feedback." : "Adding Feedback failed.";
+                }
+                else
+                {
+                    response = ResponseHelper.CreateResponse("AddFeedback", "Sorry! You have not ordered this item. Please order this item to give feedback.");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                response.Name = "Error";
-                response.Value = "Invalid feedback details.Enter proper details";
+                response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
 
             return response;
@@ -56,33 +64,38 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> GetFeedbacks(string itemName = null)  
         {
             ServerResponse response = new ServerResponse();
-  
-            FoodItem item = await _foodItemRepository.GetByItemName(itemName);
 
-            if (item == null)
+            try
             {
-                response.Name = "Error";
-                response.Value = "This itemName does not exist exists";
+                FoodItem item = await _foodItemRepository.GetByItemName(itemName) ?? throw new Exception("This item name does not exist.");
 
-                return response;
+                Expression<Func<Feedback, bool>> predicate = f => f.FoodItem.FoodItemId == item.FoodItemId;
+                List<Feedback> feedbackList = (await _feedBackRepository.GetList(predicate: predicate)).ToList();
+
+                if (feedbackList.Any())
+                {
+                    List<DisplayFeedbackDTO> feedbackDtoList = _mapper.Map<List<DisplayFeedbackDTO>>(feedbackList);
+                    response.Value = JsonSerializer.Serialize(feedbackDtoList);
+                }
+                else
+                {
+                    response.Value = "No feedbacks available for this item.";
+                }
+
+                response.Name = "Feedback List";
             }
 
-            Expression<Func<Feedback, bool>> predicate = f => f.FoodItem.FoodItemId == item.FoodItemId;
-            List<Feedback> feedbackList = (await _feedBackRepository.GetList(predicate: predicate)).ToList();
-
-            if (feedbackList.Any())
+            catch (Exception ex)
             {
-                List<DisplayFeedbackDTO> feedbackDtoList = _mapper.Map<List<DisplayFeedbackDTO>>(feedbackList);
-                response.Value = JsonSerializer.Serialize(feedbackDtoList);
+                response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
-            else
-            {
-                response.Value = "No feedbacks available for this item.";
-            }
-
-            response.Name = "Feedback List";
 
             return response;
+        }
+
+        private async Task<bool> HasUserOrderedItem(int userId, int foodItemId)
+        {
+            return await _orderItemRepository.OrderItemExists(oi =>oi.Order.UserId == userId && oi.RecommendedMenu.FoodItemId == foodItemId);
         }
     }
 }

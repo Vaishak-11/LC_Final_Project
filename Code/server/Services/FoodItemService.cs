@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Castle.Core.Internal;
+using RecommendationEngineServer.Helpers;
 using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Models.Entities;
 using RecommendationEngineServer.Repositories.Interfaces;
@@ -27,27 +28,29 @@ namespace RecommendationEngineServer.Services
         {
             ServerResponse response = new ServerResponse();
 
-            if (item != null)
+            try
             {
-                FoodItem existingItem = await _foodItemRepository.GetByItemName(item.ItemName);
+                if (item == null)
+                {
+                    throw new ArgumentException("Invalid item. Enter proper details.");
+                }
+
+                var existingItem = await _foodItemRepository.GetByItemName(item.ItemName);
 
                 if (existingItem != null)
                 {
-                    response.Name = "Error";
-                    response.Value = "This itemName already exists";
-
-                    return response;
+                    throw new ArgumentException("This item name already exists.");
                 }
 
-                FoodItem newItem = _mapper.Map<FoodItemDTO, FoodItem>(item);
-                int itemId = await _foodItemRepository.Add(newItem);
+                var newItem = _mapper.Map<FoodItem>(item);
+                var itemId = await _foodItemRepository.Add(newItem);
 
-                response.Name = "AddItem";
-                response.Value = (itemId > 0) ? "Item added successfully." : "Adding Item failed.";
+                string message = itemId > 0 ? "Item added successfully." : "Adding item failed.";
+                response = ResponseHelper.CreateResponse("AddItem", message);
 
                 if (itemId > 0)
                 {
-                    int notificationId = await _notificationService.AddNotification(new Notification
+                    await _notificationService.AddNotification(new Notification
                     {
                         UserId = UserData.UserId,
                         Message = $"New item {item.ItemName} added to the menu list.",
@@ -55,10 +58,9 @@ namespace RecommendationEngineServer.Services
                     });
                 }
             }
-            else
+            catch (Exception ex)
             {
-                response.Name = "Error";
-                response.Value = "Invalid item. Enter proper details";
+                response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
 
             return response;
@@ -66,28 +68,47 @@ namespace RecommendationEngineServer.Services
 
         public async Task<ServerResponse> GetList()
         {
-            ServerResponse response = new ServerResponse();
+            var response = new ServerResponse();
 
-            List<FoodItem> itemList = (await _foodItemRepository.GetList()).ToList();
-            List<int> itemIds = itemList.Select(i => i.FoodItemId).ToList();
-
-            List<Feedback> feedbackList = (await _feedbackRepository.GetList(predicate: f => itemIds.Contains(f.FoodItemId))).ToList();
-
-            List<DisplayMenuDTO> items = itemList.Select(foodItem =>
+            try
             {
-                var feedbacks = feedbackList.Where(f => f.FoodItemId == foodItem.FoodItemId).ToList();
-                double averageRating = feedbacks.Any() ? feedbacks.Average(f => f.Rating) : 0;
+                List<FoodItem> itemList = (await _foodItemRepository.GetList()).ToList();
 
-                return new DisplayMenuDTO
+                if (!itemList.Any())
                 {
-                    ItemName = foodItem.ItemName,
-                    Price = foodItem.Price,
-                    Rating = averageRating
-                };
-            }).ToList();
+                    throw new Exception("No items found.");
+                }
 
-            response.Name = "itemList";
-            response.Value = !itemList.IsNullOrEmpty() ? JsonSerializer.Serialize(items) : new List<DisplayMenuDTO>();
+                var itemIds = itemList.Select(i => i.FoodItemId).ToList();
+                var feedbackList = (await _feedbackRepository.GetList(f => itemIds.Contains(f.FoodItemId))).ToList();
+
+                var itemTasks = itemList.Select(async foodItem =>
+                {
+                    var feedbacks = feedbackList.Where(f => f.FoodItemId == foodItem.FoodItemId).ToList();
+                    var averageRating = feedbacks.Any() ? feedbacks.Average(f => f.Rating) : 0;
+                    var comments = feedbacks.Any() ? feedbacks.Select(f => f.Comment).ToList() : new List<string>();
+                    var overallRating = await SentimentAnlysisHelper.AnalyzeSentiments(comments, averageRating);
+
+                    return new DisplayMenuDTO
+                    {
+                        ItemName = foodItem.ItemName,
+                        Price = foodItem.Price,
+                        FoodCategory = foodItem.FoodCategory,
+                        Rating = averageRating,
+                        OverallRating = overallRating,
+                    };
+                }).ToList();
+
+                var items = (await Task.WhenAll(itemTasks)).ToList();
+                items = items.OrderBy(d => d.FoodCategory).ThenByDescending(d => d.OverallRating).ToList();
+
+                string message = !items.IsNullOrEmpty() ? JsonSerializer.Serialize(items) : "Not food items available to display";
+                response = ResponseHelper.CreateResponse("ItemList", message);
+            }
+            catch (Exception ex)
+            {
+                response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
+            }
 
             return response;
         }
@@ -96,53 +117,44 @@ namespace RecommendationEngineServer.Services
         {
             ServerResponse response = new ServerResponse();
 
-            if (itemDto != null)
+            try
             {
+                if (itemDto == null)
+                {
+                    throw new ArgumentException("Invalid item. Enter proper details.");
+                }
+
                 FoodItem oldItem = await _foodItemRepository.GetByItemName(oldName);
-                if (oldItem != null)
+
+                if (oldItem == null)
                 {
-                    FoodItem existingItem = itemDto.ItemName != null ? await _foodItemRepository.GetByItemName(itemDto.ItemName) : null;
-
-                    if (existingItem != null && existingItem.FoodItemId != oldItem.FoodItemId)
-                    {
-                        response.Name = "Error";
-                        response.Value = "This itemName already exists";
-
-                        return response;
-                    }
-
-                    itemDto = UpdateItemFields(oldItem, itemDto, avilability);
-
-                    FoodItem item = _mapper.Map<FoodItemDTO, FoodItem>(itemDto);
-                    try
-                    {
-                        await _foodItemRepository.Update(item);
-                        response.Name = "Update";
-                        response.Value = "Updated succesfully";
-
-                        int notificationId = await _notificationService.AddNotification(new Notification
-                        {
-                            UserId = UserData.UserId,
-                            Message = $"The item {item.ItemName} has been updated. Check Details",
-                            IsDelivered = false
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        response.Name = "Error";
-                        response.Value = ex.Message;
-                    }
+                    throw new Exception("Item not found.");
                 }
-                else
+
+                FoodItem existingItem = !string.IsNullOrEmpty(itemDto.ItemName) ? await _foodItemRepository.GetByItemName(itemDto.ItemName) : null;
+
+                if (existingItem != null && existingItem.FoodItemId != oldItem.FoodItemId)
                 {
-                    response.Name = "Error";
-                    response.Value = "Item not found";
+                    throw new ArgumentException("This item name already exists.");
                 }
+
+                itemDto = UpdateItemFields(oldItem, itemDto, avilability);
+                FoodItem item = _mapper.Map<FoodItemDTO, FoodItem>(itemDto);
+
+                await _foodItemRepository.Update(item);
+
+                response = ResponseHelper.CreateResponse("Update", "Updated succesfully");
+
+                int notificationId = await _notificationService.AddNotification(new Notification
+                {
+                    UserId = UserData.UserId,
+                    Message = $"The item {item.ItemName} has been updated. Check Details",
+                    IsDelivered = false
+                });
             }
-            else
+            catch (Exception ex)
             {
-                response.Name = "Error";
-                response.Value = "Invalid item. Enter proper details";
+                response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
 
             return response;
@@ -152,33 +164,24 @@ namespace RecommendationEngineServer.Services
         {
             ServerResponse response = new ServerResponse();
 
-            FoodItem item = await _foodItemRepository.GetByItemName(itemName);
-
-            if (item != null)
+            try
             {
-                try
-                {
-                    await _foodItemRepository.Delete(item.FoodItemId);
-                    response.Name = "Delete";
-                    response.Value = "Deleted successfully";
+                FoodItem item = await _foodItemRepository.GetByItemName(itemName) ?? throw new Exception("Item not found.");
+;
+                await _foodItemRepository.Delete(item.FoodItemId);
 
-                    int notificationId = await _notificationService.AddNotification(new Notification
-                    {
-                        UserId = UserData.UserId,
-                        Message = $"The item {item.ItemName} has been deleted from the main menu list.",
-                        IsDelivered = false
-                    });
-                }
-                catch (Exception ex)
+                response  = ResponseHelper.CreateResponse("Delete", "Deleted successfully");
+                
+                int notificationId = await _notificationService.AddNotification(new Notification
                 {
-                    response.Name = "Error";
-                    response.Value = ex.Message;
-                }
+                    UserId = UserData.UserId,
+                    Message = $"The item {item.ItemName} has been deleted from the main menu list.",
+                    IsDelivered = false
+                });
             }
-            else
+            catch (Exception ex)
             {
-                response.Name = "Error";
-                response.Value = "Item not found";
+                response= ResponseHelper.CreateResponse("Error",ex.Message.ToString());
             }
 
             return response;
@@ -186,37 +189,46 @@ namespace RecommendationEngineServer.Services
 
         public async Task<ServerResponse> GetFoodItemWithFeedbackReport(int month, int year)
         {
-            List<FoodItem> foodItems = (await _foodItemRepository.GetList()).ToList();
-            List<int> foodItemIds = foodItems.Select(f => f.FoodItemId).ToList();
+            ServerResponse serverResponse = new ServerResponse();
+            try
+            {
+                List<FoodItem> foodItems = (await _foodItemRepository.GetList()).ToList();
+                List<int> foodItemIds = foodItems.Select(f => f.FoodItemId).ToList();
 
-            List<Feedback> feedbacks = (await _feedbackRepository.GetList(
+                List<Feedback> feedbacks = (await _feedbackRepository.GetList(
                                            predicate: f => foodItemIds.Contains(f.FoodItemId)
                                                         && f.FeedbackDate.Month == month
                                                         && f.FeedbackDate.Year == year
                                        )).ToList();
 
-            List<FoodReportDTO> foodItemWithFeedbacks = foodItems.Select(f =>
-            {
-                List<Feedback> itemFeedbacks = feedbacks.Where(feedback => feedback.FoodItemId == f.FoodItemId).ToList();
-                double averageRating = itemFeedbacks.Any() ? itemFeedbacks.Average(feedback => feedback.Rating) : 0;
-                List<string> comments = itemFeedbacks.Select(feedback => feedback.Comment).ToList();
-
-                return new FoodReportDTO
+                if (feedbacks.IsNullOrEmpty())
                 {
-                    ItemName = f.ItemName,
-                    Comments = comments,
-                    AverageRating = averageRating
-                };
-            }).ToList();
+                    return ResponseHelper.CreateResponse("Report", "No feedbacks are given for the given month and year.");
+                }
 
-            ServerResponse response = new ServerResponse
+                List<FoodReportDTO> foodItemWithFeedbacks = foodItems.Select(f =>
+                {
+                    List<Feedback> itemFeedbacks = feedbacks.Where(feedback => feedback.FoodItemId == f.FoodItemId).ToList();
+                    double averageRating = itemFeedbacks.Any() ? itemFeedbacks.Average(feedback => feedback.Rating) : 0;
+                    List<string> comments = itemFeedbacks.Select(feedback => feedback.Comment).ToList();
+
+                    return new FoodReportDTO
+                    {
+                        ItemName = f.ItemName,
+                        Comments = comments,
+                        AverageRating = averageRating
+                    };
+                }).ToList();
+
+                serverResponse = ResponseHelper.CreateResponse("FoodItemWithFeedbackReport", JsonSerializer.Serialize(foodItemWithFeedbacks));
+            }
+            catch (Exception ex)
             {
-                Name = "FoodItemWithFeedbackReport",
-                Value = JsonSerializer.Serialize(foodItemWithFeedbacks)
-            };
+                serverResponse = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
+            }
 
-            return response;
-        }
+            return serverResponse;
+        } 
 
         private static FoodItemDTO UpdateItemFields(FoodItem oldItem, FoodItemDTO itemDto, string availability)
         {

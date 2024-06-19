@@ -95,8 +95,22 @@ namespace RecommendationEngineServer
             int bytesRead = stream.Read(buffer, 0, buffer.Length);
             string request = Encoding.ASCII.GetString(buffer, 0, bytesRead);
             Console.WriteLine($"Received request from {client.Client.RemoteEndPoint}: {request}");
+            ServerResponse response;
 
-            ServerResponse response = requestHandlerService.ProcessRequest(request).Result;
+            try
+            {
+                response = requestHandlerService.ProcessRequest(request).Result;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing request: {ex.Message}");
+                response = new ServerResponse
+                {
+                    Name = "Error",
+                    Value = ex.Message,
+                };
+            }
+
             byte[] responseData = Encoding.ASCII.GetBytes($"{response.Name}#{response.Value}#{response.UserId}#{response.RoleId}");
             stream.Write(responseData, 0, responseData.Length);
 

@@ -35,12 +35,12 @@ namespace RecommendationEngineServer.Services
 
                 if (userLogin.Role.ToLower() == "employee")
                 {
-                    Employee employee = await _employeeRepository.GetByEmployeeCode(userLogin.UserName);
+                    Employee employee = await _employeeRepository.GetByEmployeeCode(userLogin.UserName) ?? throw new Exception("Login failed. Employee not found.");
                     (loginMessage, userId, roleId) = ValidateEmployeeLogin(employee, userLogin.UserName, userLogin.Password);
                 }
                 else
                 {
-                    User user = await _userRepository.GetUserByName(userLogin.UserName);
+                    User user = await _userRepository.GetUserByName(userLogin.UserName) ?? throw new Exception("Login failed. User not found."); ;
                     (loginMessage, userId, roleId) = ValidateUserLogin(user, userLogin.Password);
                 }
 
@@ -49,32 +49,33 @@ namespace RecommendationEngineServer.Services
 
                 if (userId > 0)
                 {
-                    List<Notification> pendingNotifications = await GetPendingNotifications(userId);
-
-                    var loginResponse = new LoginResponse
+                    if(roleId != 1)
                     {
-                        Message = loginMessage,
-                        Notifications = pendingNotifications.Select(n => n.Message).ToList()
-                    };
+                        List<Notification> pendingNotifications = await GetPendingNotifications(userId);
 
-                    response.Name = "Success";
-                    response.Value = JsonSerializer.Serialize(loginResponse);
+                        var loginResponse = new LoginResponse
+                        {
+                            Message = loginMessage,
+                            Notifications = pendingNotifications.Select(n => n.Message).ToList()
+                        };
 
-                    UserData.UserId = response.UserId;
-                    UserData.RoleId = response.RoleId;
+                        response.Name = "Success";
+                        response.Value = JsonSerializer.Serialize(loginResponse);
 
-                    await HandleNotificationDeliveryStatus(userId, pendingNotifications);
+                        UserData.UserId = response.UserId;
+                        UserData.RoleId = response.RoleId;
+
+                        await HandleNotificationDeliveryStatus(userId, pendingNotifications);
+                    }
                 }
                 else
                 {
-                    response.Name = "Error";
-                    response.Value = "Login failed. Invalid credentials.";
+                    throw new Exception("Login failed. Invalid credentials.");
                 }
             }
             else
             {
-                response.Name = "Error";
-                response.Value = "Invalid role.";
+                throw new Exception("Login failed.Invalid role.");
             }
 
             return response;
@@ -86,15 +87,12 @@ namespace RecommendationEngineServer.Services
 
             if (!string.IsNullOrEmpty(userRegister.Role))
             {
-                Role roleDetails = await _roleRepository.GetRoleByName(userRegister.Role);
+                Role roleDetails = await _roleRepository.GetRoleByName(userRegister.Role) ?? throw new Exception("Registration failed. Invalid role.");
                 User existingUser = await _userRepository.GetUserByName(userRegister.UserName);
 
                 if (existingUser != null)
                 {
-                    response.Name = "Error";
-                    response.Value = "This username already exists. Try with a different userName";
-                    
-                    return response;
+                    throw new Exception("Registration failed. This username already exists. Try with a different userName");
                 }
 
                 User user = new User { UserName = userRegister.UserName, Password = userRegister.Password,  RoleId= roleDetails.RoleId };
@@ -113,12 +111,10 @@ namespace RecommendationEngineServer.Services
                     response.Name = "Register";
                     response.Value = (userId > 0) ? "Register successful." : "Register failed.";
                 }
-
             }
             else
             {
-                response.Name = "Error";
-                response.Value = "REgistration failed. Invalid role.";
+                throw new Exception("Registration failed. Invalid role.");
             }
 
             return response;

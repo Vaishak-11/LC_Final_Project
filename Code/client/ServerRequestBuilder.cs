@@ -113,8 +113,12 @@ namespace RecommendationEngineClient
                 case "4":
                     return BuildGetRecommendationForDateRequest();
 
-                case "get orders":
+                case "get menu items":
                 case "5":
+                    return BuildGetFoodItemsRequest();
+
+                case "get orders":
+                case "6":
                     return BuildGetOrdersRequest();
 
                 default:
@@ -208,14 +212,23 @@ namespace RecommendationEngineClient
         {
             FoodItemDTO item = new FoodItemDTO();
 
-            Console.Write("Enter the Food item name: ");
-            item.ItemName = Console.ReadLine();
+            while (string.IsNullOrWhiteSpace(item.ItemName))
+            {
+                Console.Write("Enter the Food item name: ");
+                item.ItemName = Console.ReadLine();
+            }
+            
+            while (item.Price <= 0)
+            {
+                Console.Write("Enter the price for it: ");
+                item.Price = Convert.ToDecimal(Console.ReadLine());
+            }
 
-            Console.Write("Enter the price for it: ");
-            item.Price = Convert.ToDecimal(Console.ReadLine());
-
-            Console.Write("Enter the category for it [Breakfast, Lunch, Dinner, Beverages]: ");
-            item.FoodCategory = ParseFoodCategory(Console.ReadLine());
+            while (item.FoodCategory == FoodCategory.None)
+            {
+                Console.Write("Enter the category for it [Breakfast, Lunch, Dinner, Beverage]: ");
+                item.FoodCategory = ParseFoodCategory(Console.ReadLine());
+            }
 
             Console.Write("Is the item available? [Y/N]: ");
             item.IsAvailable = Console.ReadLine().ToLower() == "y" ? true : false;
@@ -231,8 +244,13 @@ namespace RecommendationEngineClient
 
         private static string BuildUpdateItemRequest()
         {
-            Console.Write("Enter the name of the item you want to update: ");
-            string oldItemName = Console.ReadLine();
+            string oldItemName = null;
+
+            while(string.IsNullOrWhiteSpace(oldItemName))
+            {
+                Console.Write("Enter the name of the item you want to update: ");
+                oldItemName = Console.ReadLine();
+            }
 
             string availablity = null;
             FoodItemDTO item = new FoodItemDTO();
@@ -261,7 +279,7 @@ namespace RecommendationEngineClient
                         break;
 
                     case "category":
-                        Console.Write("Enter the category for it [Breakfast, Lunch, Dinner, Beverages]: ");
+                        Console.Write("Enter the category for it [Breakfast, Lunch, Dinner, Beverage]: ");
                         item.FoodCategory = ParseFoodCategory(Console.ReadLine());
                         break;
 
@@ -300,6 +318,11 @@ namespace RecommendationEngineClient
 
             Console.Write("Enter the year for which you want to see the report: ");
             int year = Convert.ToInt32(Console.ReadLine());
+            while(year > DateTime.Now.Year)
+            {
+                Console.WriteLine("Invalid year. Please enter a year which is less than or equal to current year");
+                year = Convert.ToInt32(Console.ReadLine());
+            }
 
             return $"getfoodreport#{month}#{year}";
         }
@@ -310,12 +333,18 @@ namespace RecommendationEngineClient
             feedbackDTO.UserId = UserData.UserId;
             feedbackDTO.FeedbackDate = DateTime.Now;
 
-            Console.Write("Enter the menu item Name for which you want to add feedback: ");
-            feedbackDTO.ItemName = Console.ReadLine();
-
-            Console.Write("Enter your feedback Comment: ");
-            feedbackDTO.Comment = Console.ReadLine();
-
+            while (string.IsNullOrWhiteSpace(feedbackDTO.ItemName))
+            {
+                Console.Write("Enter the menu item Name for which you want to add feedback: ");
+                feedbackDTO.ItemName = Console.ReadLine();
+            }
+            
+            while (string.IsNullOrWhiteSpace(feedbackDTO.Comment))
+            {
+                Console.Write("Enter your feedback Comment: ");
+                feedbackDTO.Comment = Console.ReadLine();
+            }
+            
             Console.Write("Enter your rating for the item[1-5]: ");
             feedbackDTO.Rating = Convert.ToInt32(Console.ReadLine());
             while(feedbackDTO.Rating < 1 || feedbackDTO.Rating > 5)
@@ -345,23 +374,35 @@ namespace RecommendationEngineClient
         {
             List<RecommendedMenuDTO> recommendations = new List<RecommendedMenuDTO>();
 
-            Console.WriteLine("Enter the food category for which you want to recommend items [Breakfast, Lunch, Dinner, Beverages]: ");
-            string category = Console.ReadLine()?.Trim();
-
-            Console.Write("Enter the number of items to be recommended: ");
-            int numberOfItems = Convert.ToInt32(Console.ReadLine());
-
-            for (int i = 0; i < numberOfItems; i++)
+            while (true)
             {
-                RecommendedMenuDTO recommendationDTO = new RecommendedMenuDTO();
-                recommendationDTO.UserId = UserData.UserId;
-                recommendationDTO.RecommendationDate = DateTime.Now.AddDays(1);
-                recommendationDTO.Category = ParseFoodCategory(category);
+                Console.WriteLine("Enter the food category for which you want to recommend items [Breakfast, Lunch, Dinner, Beverage]: ");
+                string category = Console.ReadLine()?.Trim();
 
-                Console.Write("Enter the menu item Name you want to recommend: ");
-                recommendationDTO.ItemName = Console.ReadLine();
+                Console.Write("Enter the number of items to be recommended: ");
+                int numberOfItems = Convert.ToInt32(Console.ReadLine());
 
-                recommendations.Add(recommendationDTO);
+                for (int i = 0; i < numberOfItems; i++)
+                {
+                    RecommendedMenuDTO recommendationDTO = new RecommendedMenuDTO();
+                    recommendationDTO.UserId = UserData.UserId;
+                    recommendationDTO.RecommendationDate = DateTime.Now.AddDays(1);
+                    recommendationDTO.Category = ParseFoodCategory(category);
+
+                    while(string.IsNullOrWhiteSpace(recommendationDTO.ItemName))
+                    {
+                        Console.Write("Enter the menu item Name you want to recommend: ");
+                        recommendationDTO.ItemName = Console.ReadLine();
+                    }
+
+                    recommendations.Add(recommendationDTO);
+                }
+
+                Console.Write("Do you want to recommend more items? [Y/N]: ");
+                if (Console.ReadLine()?.ToLower().Trim() != "y")
+                {
+                    break;
+                }
             }
 
             string recommendationsJson = JsonSerializer.Serialize(recommendations);
@@ -398,29 +439,52 @@ namespace RecommendationEngineClient
         private static string BuildUpdateRecommendationRequest()
         {
             RecommendedMenuDTO recommendedMenu = new RecommendedMenuDTO();
-            recommendedMenu.Category = FoodCategory.None;
-            recommendedMenu.OldCategory = FoodCategory.None;
 
             while(recommendedMenu.OldCategory == FoodCategory.None)
             {
-                Console.WriteLine("Enter the food category for which you want to update the item [Breakfast, Lunch, Dinner, Beverages]: ");
+                Console.WriteLine("Enter the food category for which you want to update the item [Breakfast, Lunch, Dinner, Beverage]: ");
                 recommendedMenu.OldCategory = ParseFoodCategory(Console.ReadLine()?.Trim());
             }
-            
-            Console.Write("Enter the name of the food item which you want to update: ");
-            recommendedMenu.OldItemName = Console.ReadLine()?.Trim();
 
-            Console.Write("Enter the new name of the food item: ");
-            recommendedMenu.ItemName = Console.ReadLine()?.Trim();
-
-            while(recommendedMenu.Category == FoodCategory.None)
+            while (string.IsNullOrWhiteSpace(recommendedMenu.OldItemName))
             {
-                Console.Write("Enter the new category for the item [Breakfast, Lunch, Dinner, Beverages]: ");
-                recommendedMenu.Category = ParseFoodCategory(Console.ReadLine()?.Trim());
+                Console.Write("Enter the name of the item you want to update: ");
+                recommendedMenu.OldItemName = Console.ReadLine();
             }
-            
-            Console.Write("Enter the recommendationStatus for the item [Y/N]: ");
-            recommendedMenu.IsRecommended = Console.ReadLine()?.ToLower().Trim() == "y";
+
+            while (true)
+            {
+                Console.WriteLine("Enter the parameter you want to update for the item (Name, Category, RecommendationStatus). Enter 'e' to exit:");
+                string param = Console.ReadLine()?.Trim().ToLower();
+
+                if (param == "e")
+                {
+                    break;
+                }
+
+                switch (param)
+                {
+                    case "name":
+                        Console.Write("Enter the new Food item name: ");
+                        recommendedMenu.ItemName = Console.ReadLine()?.Trim();
+                        break;
+
+                    case "category":
+                        Console.Write("Enter the new category for the item [Breakfast, Lunch, Dinner, Beverage]: ");
+                        recommendedMenu.Category = ParseFoodCategory(Console.ReadLine()?.Trim());
+                        break;
+
+                    case "recommendationstatus":
+                        Console.Write("Enter the recommendation status for the item [Y/N]: ");
+                        recommendedMenu.IsRecommended  = Console.ReadLine()?.Trim().ToLower() == "y";
+                        break;
+
+                    default:
+                        Console.WriteLine("Unknown parameter.");
+                        break;
+                }
+            }
+
             recommendedMenu.RecommendationDate = DateTime.Now.AddDays(1);
             recommendedMenu.UserId = UserData.UserId;
 
@@ -444,7 +508,7 @@ namespace RecommendationEngineClient
 
                 while (category == FoodCategory.None)
                 {
-                    Console.Write("Enter the category for which you want to order [Breakfast, Lunch, Dinner, Beverages]: ");
+                    Console.Write("Enter the category for which you want to order [Breakfast, Lunch, Dinner, Beverage]: ");
                     category = ParseFoodCategory(Console.ReadLine()?.Trim());
 
                     if (category == FoodCategory.None)
@@ -474,6 +538,7 @@ namespace RecommendationEngineClient
                 {
                     Console.Write($"Food Item {i + 1}: ");
                     string item = Console.ReadLine();
+
                     if (!string.IsNullOrWhiteSpace(item))
                     {
                         orderDTO.ItemNames.Add(item);
@@ -494,8 +559,27 @@ namespace RecommendationEngineClient
             return $"addorder#{orderJson}";
         }
 
-        private static string BuildGetOrdersRequest() { 
-            return "getorders";
+        private static string BuildGetOrdersRequest() 
+        {
+            DateTime dateTime = DateTime.Now.Date;
+
+            Console.WriteLine("Note: You can leave the date field empty to see the orders for the upcoming day.");
+            Console.Write("Enter the Date in the format [yyyy-mm-dd] for the recommended menu for which you want to see the orders: "); 
+            string userInput = Console.ReadLine();
+
+            if(userInput != string.Empty)
+            {
+                if (DateTime.TryParseExact(userInput, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime userDate))
+                {
+                    dateTime = userDate.Date.AddDays(-1);
+                }
+                else
+                {
+                    Console.WriteLine("Invalid date format. Using current date instead.");
+                }
+            }
+
+            return $"getorders#{dateTime: yyyy-MM-dd}";
         }
 
         private static FoodCategory ParseFoodCategory(string input)

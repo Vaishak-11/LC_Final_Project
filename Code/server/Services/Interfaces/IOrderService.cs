@@ -6,6 +6,6 @@ namespace RecommendationEngineServer.Services.Interfaces
     {
         Task<ServerResponse> AddOrder(OrderDTO order);
 
-        Task<ServerResponse> GetOrders();
+        Task<ServerResponse> GetOrders(DateTime? date = null);
     }
 }

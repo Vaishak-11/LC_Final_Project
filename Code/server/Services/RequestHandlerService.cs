@@ -1,10 +1,10 @@
-﻿using RecommendationEngineServer.Models.DTOs;
+﻿using RecommendationEngineServer.Helpers;
+using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Services.Interfaces;
 using System.Globalization;
 using System.Text.Json;
 
 namespace RecommendationEngineServer.Services
-
 {
     public class RequestHandlerService : IRequestHandlerService
     {
@@ -59,7 +59,7 @@ namespace RecommendationEngineServer.Services
                 case "getfoodreport":
                     return await HandleGetReportRequest(request, parts);
                 default:
-                    return new ServerResponse { Name = "Error", Value = "Unknown command." };
+                    throw new ArgumentException("Unknown command.");
             }
         }
 
@@ -67,47 +67,58 @@ namespace RecommendationEngineServer.Services
         {
             if (parts.Length < 2)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid login command. Usage: login <userDetails>" };
+                return ResponseHelper.CreateResponse("Error", "Invalid login command. Usage: login <userDetails>");
             }
 
-            UserLoginDTO user = JsonSerializer.Deserialize<UserLoginDTO>(parts[1]);
-
-            Console.WriteLine($"Processing login command: username={user.UserName}, role={user.Role}");
-            return await _userService.Login(user);
+            try
+            {
+                UserLoginDTO user = JsonSerializer.Deserialize<UserLoginDTO>(parts[1]);
+                Console.WriteLine($"Processing login command: username={user.UserName}, role={user.Role}");
+                return await _userService.Login(user);
+            }
+            catch (JsonException)
+            {
+                return ResponseHelper.CreateResponse("Error", "Invalid user details format.");
+            }
         }
 
         private async Task<ServerResponse> HandleRegisterRequest(string request, string[] parts)
         {
             if (parts.Length < 2)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid register command. Usage: login <username> <password> <role> <empCode>" };
+                return ResponseHelper.CreateResponse("Error", "Invalid register command. Usage: login <username> <password> <role> <empCode>");
             }
 
-            UserLoginDTO user = JsonSerializer.Deserialize<UserLoginDTO>(parts[1]);
-
-            Console.WriteLine($"Processing register command: username={user.UserName}, role={user.Role}");
-            return await _userService.RegisterUser(user);
+            try
+            {
+                UserLoginDTO user = JsonSerializer.Deserialize<UserLoginDTO>(parts[1]);
+                Console.WriteLine($"Processing register command: username={user.UserName}, role={user.Role}");
+                
+                return await _userService.RegisterUser(user);
+            }
+            catch (JsonException)
+            {
+                return ResponseHelper.CreateResponse("Error", "Invalid user details format.");
+            }
         }
 
         private async Task<ServerResponse> HandleAddMenuRequest(string request, string[] parts)
         {
             if (parts.Length < 2)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid Addmenu command. Usage: Addmenu <menu details>" };
+                return ResponseHelper.CreateResponse("Error", "Invalid Addmenu command. Usage: Addmenu <menu details>");
             }
-
-            string menu = parts[1];
 
             try
             {
-                FoodItemDTO menuDTO = JsonSerializer.Deserialize<FoodItemDTO>(menu);
+                FoodItemDTO menuDTO = JsonSerializer.Deserialize<FoodItemDTO>(parts[1]);
                 Console.WriteLine($"Processing add menu command: ItemName={menuDTO.ItemName}, Price={menuDTO.Price}, Category={menuDTO.FoodCategory}, IsAvailable={menuDTO.IsAvailable}");
 
                 return await _foodItemService.Add(menuDTO);
             }
             catch (JsonException)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid menu details format" };
+                return ResponseHelper.CreateResponse("Error", "Invalid menu details format");
             }
         }
 
@@ -120,15 +131,15 @@ namespace RecommendationEngineServer.Services
         {
             if (parts.Length < 4)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid UpdateMenu command. Usage: UpdateMenu <oldItemName> <new menu details> <avalability status>" };
+                return ResponseHelper.CreateResponse("Error", "Invalid UpdateMenu command. Usage: UpdateMenu <oldItemName> <new menu details> <avalability status>");
             }
-
-            string oldName = parts[1];
-            string menu = parts[2];
-            string availability = parts[3];
 
             try
             {
+                string oldName = parts[1];
+                string menu = parts[2];
+                string availability = parts[3];
+
                 FoodItemDTO menuDTO = JsonSerializer.Deserialize<FoodItemDTO>(menu);
 
                 Console.WriteLine($"Processing update menu command: ItemName={menuDTO.ItemName}, Price={menuDTO.Price}, Category={menuDTO.FoodCategory}, IsAvailable={menuDTO.IsAvailable}");
@@ -137,7 +148,7 @@ namespace RecommendationEngineServer.Services
             }
             catch (JsonException)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid menu details format" };
+                return ResponseHelper.CreateResponse("Error", "Invalid menu details format");
             }
         }
 
@@ -145,7 +156,7 @@ namespace RecommendationEngineServer.Services
         {
             if (parts.Length < 2)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid DeleteMenu command. Usage: DeleteMenu <ItemName>" };
+                return ResponseHelper.CreateResponse("Error", "Invalid DeleteMenu command. Usage: DeleteMenu <ItemName>");
             }
 
             string itemName = parts[1];
@@ -158,21 +169,19 @@ namespace RecommendationEngineServer.Services
         {
             if (parts.Length < 2)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid AddFeedback command. Usage: AddFeedback <feedback details>" };
+                return ResponseHelper.CreateResponse("Error", "Invalid AddFeedback command. Usage: AddFeedback <feedback details>");
             }
-
-            string feeedbackObject = parts[1];
 
             try
             {
-                FeedbackDTO feedback = JsonSerializer.Deserialize<FeedbackDTO>(feeedbackObject);
+                FeedbackDTO feedback = JsonSerializer.Deserialize<FeedbackDTO>(parts[1]);
                 Console.WriteLine($"Processing add feedback command");
 
                 return await _feedbackService.AddFeedback(feedback);
             }
             catch (JsonException)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid feedback info" };
+                return ResponseHelper.CreateResponse("Error", "Invalid feedback info");
             }
         }
 
@@ -187,34 +196,30 @@ namespace RecommendationEngineServer.Services
         {
             if (parts.Length < 2)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid AddRecommendation command. Usage: AddRecommendation <recommendation details>" };
+                return ResponseHelper.CreateResponse("Error", "Invalid AddRecommendation command. Usage: AddRecommendation <recommendation details>");
             }
-
-            string recommendationObject = parts[1];
 
             try
             {
-                List<RecommendedMenuDTO> recommendations = JsonSerializer.Deserialize<List<RecommendedMenuDTO>>(recommendationObject);
+                List<RecommendedMenuDTO> recommendations = JsonSerializer.Deserialize<List<RecommendedMenuDTO>>(parts[1]);
                 Console.WriteLine($"Processing add recommendation command");
 
                 return await _recommendedMenuService.AddRecommendedMenu(recommendations);
             }
             catch (JsonException)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid recommendation details format" };
+                return ResponseHelper.CreateResponse("Error", "Invalid recommendation details format");
             }
         }
 
         private async Task<ServerResponse> HandleGetRecommendationRequest(string request, string[] parts)
         {
             string dateString = parts[1].Trim();
-
             bool isParsed = DateTime.TryParseExact(dateString, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime selectedDate);
 
             if (isParsed)
             {
                 DateTime selectedDateTime = selectedDate.Date;
-
                 return await _recommendedMenuService.GetRecommendedMenu(selectedDateTime);
             }
             else
@@ -227,21 +232,19 @@ namespace RecommendationEngineServer.Services
         {
             if (parts.Length < 2)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid updateRecommendation command. Usage: updateRecommendation <itemName> <category>" };
+                return ResponseHelper.CreateResponse("Error", "Invalid updateRecommendation command. Usage: updateRecommendation <itemName> <category>");
             }
-
-            string recommendationObject = parts[1];
 
             try
             {
-                RecommendedMenuDTO recommendation = JsonSerializer.Deserialize<RecommendedMenuDTO>(recommendationObject);
+                RecommendedMenuDTO recommendation = JsonSerializer.Deserialize<RecommendedMenuDTO>(parts[1]);
                 Console.WriteLine($"Processing add recommendation command");
 
                 return await _recommendedMenuService.UpdateRecommendedMenu(recommendation);
             }
             catch (JsonException)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid recommendation details format" };
+                return ResponseHelper.CreateResponse("Error", "Invalid recommendation details format");
             }
         }
 
@@ -249,34 +252,43 @@ namespace RecommendationEngineServer.Services
         {
             if (parts.Length < 2)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid AddOrder command. Usage: AddOrder <order details>" };
+                return ResponseHelper.CreateResponse("Error", "Invalid AddOrder command. Usage: AddOrder <order details>");
             }
-
-            string orderObject = parts[1];
 
             try
             {
-                OrderDTO order = JsonSerializer.Deserialize<OrderDTO>(orderObject);
+                OrderDTO order = JsonSerializer.Deserialize<OrderDTO>(parts[1]);
                 Console.WriteLine($"Processing add order command");
 
                 return await _orderService.AddOrder(order);
             }
             catch (JsonException)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid order details format" };
+                return ResponseHelper.CreateResponse("Error", "Invalid order details format");
             }
         }
 
         private async Task<ServerResponse> HandleGetOrdersRequest(string request, string[] parts)
         {
-            return await _orderService.GetOrders();
+            string dateString = parts[1].Trim();
+            bool isParsed = DateTime.TryParseExact(dateString, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime selectedDate);
+
+            if (isParsed)
+            {
+                DateTime selectedDateTime = selectedDate.Date;
+                return await _orderService.GetOrders(selectedDateTime);
+            }
+            else
+            {
+                throw new ArgumentException($"Invalid date format: {dateString}. Expected format: yyyy-MM-dd.");
+            }
         }
 
         private async Task<ServerResponse> HandleGetReportRequest(string request, string[] parts)
         {
             if (parts.Length < 3)
             {
-                return new ServerResponse { Name = "Error", Value = "Invalid Get Report command. Usage: GetReport <month> <year>" };
+                return ResponseHelper.CreateResponse("Error", "Invalid Get Report command. Usage: GetReport <month> <year>");
             }
 
             int month = int.Parse(parts[1]);

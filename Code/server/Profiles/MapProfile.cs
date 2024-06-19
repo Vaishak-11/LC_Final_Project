@@ -29,9 +29,8 @@ namespace RecommendationEngineServer.Profiles
             CreateMap<RecommendedMenu, DisplayMenuDTO>()
                 .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.FoodItem.ItemName))
                 .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.FoodItem.Price));
-            //.ForMember(dest => dest.Rating, opt => opt.MapFrom(src => src.FoodItem.Rating));
 
-            CreateMap<RecommendedMenu, DisplayMenuDTO>()
+            CreateMap<RecommendedMenu, DisplayRecommendedMenuDTO>()
             .ForMember(dest => dest.ItemName, opt => opt.MapFrom(src => src.FoodItem.ItemName))
             .ForMember(dest => dest.Price, opt => opt.MapFrom(src => src.FoodItem.Price));
         }

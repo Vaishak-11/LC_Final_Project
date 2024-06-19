@@ -1,4 +1,5 @@
-﻿using RecommendationEngineServer.Models.DTOs;
+﻿using RecommendationEngineServer.Helpers;
+using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Models.Entities;
 using RecommendationEngineServer.Repositories.Interfaces;
 using RecommendationEngineServer.Services.Interfaces;
@@ -26,8 +27,14 @@ namespace RecommendationEngineServer.Services
         {
             ServerResponse response = new ServerResponse();
 
-            if (order != null && order.ItemNames.Any())
+            try 
             {
+                if (order == null || !order.ItemNames.Any())
+                {
+                    response =ResponseHelper.CreateResponse("Error", "Invalid order details. Enter proper details.");
+                    return response;
+                }
+
                 List<FoodItem> existingItems = await _foodItemRepository.GetByItemNames(order.ItemNames);
                 List<string> nonexistingItems = order.ItemNames.Except(existingItems.Select(m => m.ItemName)).ToList();
 
@@ -36,7 +43,7 @@ namespace RecommendationEngineServer.Services
                     response.Name = "Error";
                     string nonexistingItemsList = string.Join(", ", nonexistingItems);
                     response.Value = $"These item names do not exist: {nonexistingItemsList}";
-                    
+
                     return response;
                 }
 
@@ -45,20 +52,16 @@ namespace RecommendationEngineServer.Services
 
                 if (!recommendedMenus.Any())
                 {
-                    response.Name = "Error";
-                    response.Value = "No recommended menus found for the given items.";
-                    
-                    return response;
+                    return ResponseHelper.CreateResponse("Error", "No recommended menus found for the given items.");
                 }
 
                 Order newOrder = new Order
                 {
                     UserId = order.UserId,
-                    OrderDate = DateTime.Now 
+                    OrderDate = DateTime.Now
                 };
 
                 int orderId = await _orderRepository.Add(newOrder);
-
                 if (orderId > 0)
                 {
                     foreach (var itemName in order.ItemNames)
@@ -78,98 +81,94 @@ namespace RecommendationEngineServer.Services
                         }
                         else
                         {
-                            response.Name = "Error";
-                            response.Value = $"Recommended menu for food item '{itemName}' not found.";
-                            return response;
+                            return ResponseHelper.CreateResponse("Error", $"Recommended menu for food item '{itemName}' not found.");
                         }
                     }
 
-                    response.Name = "AddOrder";
-                    response.Value = "Order added successfully.";
+                    response = ResponseHelper.CreateResponse("AddOrder", "Order added successfully.");
                 }
                 else
                 {
-                    response.Name = "Error";
-                    response.Value = "Failed to add order.";
+                    response = ResponseHelper.CreateResponse("Error", "Failed to add order.");
                 }
             }
-            else
+            catch (Exception ex)
             {
-                response.Name = "Error";
-                response.Value = "Invalid order details.Enter proper details";
+                response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
 
             return response;
         }
 
-        public async Task<ServerResponse> GetOrders()
+        public async Task<ServerResponse> GetOrders(DateTime? date = null)
         {
             ServerResponse response = new ServerResponse();
 
-            List<Order> orders = (await _orderRepository.GetList()).ToList();
-
-            if (!orders.Any())
+            try
             {
-                response.Name = "Error";
-                response.Value = "No orders found.";
+                List<Order> orders = ((await _orderRepository.GetListByDate(date)).ToList()) ?? throw new Exception("Failed to fetch orders.");
 
-                return response;
-            }
-
-            List<int> orderIds = orders.Select(o => o.OrderId).ToList();
-            List<OrderItem> orderItems = (await _orderItemRepository.GetList(predicate: oi => orderIds.Contains(oi.OrderId))).ToList();
-
-            if (!orderItems.Any())
-            {
-                response.Name = "Error";
-                response.Value = "No order items found.";
-
-                return response;
-            }
-
-            List<int> menuIds = orderItems.Select(oi => oi.MenuId).ToList();
-            List<RecommendedMenu> recommendedMenus = (await _recommendedMenuRepository.GetList(rm=> menuIds.Contains(rm.MenuId))).ToList();
-
-            List<int> foodItemIds = orderItems.Select(oi => oi.RecommendedMenu.FoodItemId).ToList();
-            List<FoodItem> foodItems = (await _foodItemRepository.GetList(fi => foodItemIds.Contains(fi.FoodItemId))).ToList();
-
-            List<DisplayOrderDTO> orderDtoList = new List<DisplayOrderDTO>();
-
-            foreach (var order in orders)
-            {
-                var orderItemsForOrder = orderItems.Where(oi => oi.OrderId == order.OrderId).ToList();
-
-                foreach (var orderItem in orderItemsForOrder)
+                if (!orders.Any())
                 {
-                    var recommendedMenu = recommendedMenus.FirstOrDefault(rm => rm.MenuId == orderItem.MenuId);
+                    return ResponseHelper.CreateResponse("GetOrders", "No orders found.");
+                }
 
-                    if (recommendedMenu != null)
+                List<int> orderIds = orders.Select(o => o.OrderId).ToList();
+                List<OrderItem> orderItems = (await _orderItemRepository.GetList(predicate: oi => orderIds.Contains(oi.OrderId))).ToList();
+
+                if (!orderItems.Any())
+                {
+                    return ResponseHelper.CreateResponse("GetOrders", "No order items found.");
+                }
+
+                List<int> menuIds = orderItems.Select(oi => oi.MenuId).ToList();
+                List<RecommendedMenu> recommendedMenus = (await _recommendedMenuRepository.GetList(rm => menuIds.Contains(rm.MenuId))).ToList();
+
+                List<int> foodItemIds = orderItems.Select(oi => oi.RecommendedMenu.FoodItemId).ToList();
+                List<FoodItem> foodItems = (await _foodItemRepository.GetList(fi => foodItemIds.Contains(fi.FoodItemId))).ToList();
+
+                List<DisplayOrderDTO> orderDtoList = new List<DisplayOrderDTO>();
+
+                foreach (var order in orders)
+                {
+                    var orderItemsForOrder = orderItems.Where(oi => oi.OrderId == order.OrderId).ToList();
+
+                    foreach (var orderItem in orderItemsForOrder)
                     {
-                        var foodItem = foodItems.FirstOrDefault(fi => fi.FoodItemId == recommendedMenu.FoodItemId);
+                        var recommendedMenu = recommendedMenus.FirstOrDefault(rm => rm.MenuId == orderItem.MenuId);
 
-                        if (foodItem != null)
+                        if (recommendedMenu != null)
                         {
-                            orderDtoList.Add(new DisplayOrderDTO
+                            var foodItem = foodItems.FirstOrDefault(fi => fi.FoodItemId == recommendedMenu.FoodItemId);
+
+                            if (foodItem != null)
                             {
-                                UserName = order.User.UserName,
-                                ItemName = foodItem.ItemName
-                            });
+                                orderDtoList.Add(new DisplayOrderDTO
+                                {
+                                    UserName = order.User.UserName,
+                                    ItemName = foodItem.ItemName
+                                });
+                            }
                         }
                     }
                 }
+
+                var groupedOrderDtoList = orderDtoList
+                                            .GroupBy(o => o.ItemName)
+                                            .Select(group => new DisplayOrderDTO
+                                            {
+                                                ItemName = group.Key,
+                                                UserName = string.Join(", ", group.Select(o => o.UserName))
+                                            })
+                                            .ToList();
+
+                response.Name = "Order List";
+                response.Value = JsonSerializer.Serialize(groupedOrderDtoList);
             }
-
-            var groupedOrderDtoList = orderDtoList
-                                        .GroupBy(o => o.ItemName)
-                                        .Select(group => new DisplayOrderDTO
-                                        {
-                                            ItemName = group.Key,
-                                            UserName = string.Join(", ", group.Select(o => o.UserName))
-                                        })
-                                        .ToList();
-
-            response.Name = "Order List";
-            response.Value = JsonSerializer.Serialize(groupedOrderDtoList);
+            catch(Exception ex)
+            {
+                response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
+            }
 
             return response;
         }

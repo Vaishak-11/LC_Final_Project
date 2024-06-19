@@ -2,8 +2,8 @@
 {
     public enum Sentiment
     {
-        Positive,
-        Negative,
-        Neutral
+        Positive=1,
+        Negative=-1,
+        Neutral=0
     }
 }

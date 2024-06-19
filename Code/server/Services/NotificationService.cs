@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using RecommendationEngineServer.Helpers;
 using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Models.Entities;
 using RecommendationEngineServer.Repositories.Interfaces;
@@ -22,29 +23,37 @@ namespace RecommendationEngineServer.Services
 
         public async Task<int> AddNotification(Notification notification)
         {
-            if (string.IsNullOrEmpty(notification.Message) || notification.UserId < 0)
+            if (string.IsNullOrEmpty(notification.Message) || notification.UserId <= 0)
                 return 0;
 
-            int notificationId =  await _notificationRepository.Add(notification);
-
-            if (notificationId > 0)
+            try
             {
-                List<User> users = (await _userRepository.GetList()).ToList();
+                int notificationId = await _notificationRepository.Add(notification);
 
-                foreach (User user in users)
+                if (notificationId > 0)
                 {
-                    if ((user.Role.RoleName.ToLower() == "employee" || (user.Role.RoleName.ToLower() == "chef") && notification.Message.ToLower().Contains("item")))
+                    List<User> users = (await _userRepository.GetList()).ToList();
+
+                    foreach (User user in users)
                     {
-                       AddUserNotificationToDictionary(user.UserId, notificationId);
-                    }
-                    else if (user.Role.RoleName.ToLower() == "employee" && (notification.Message.Contains("item") || notification.Message.ToLower().Contains("recommended menu")))
-                    {
-                        AddUserNotificationToDictionary(user.UserId, notificationId);
+                        if ((user.Role.RoleName.ToLower() == "employee" || (user.Role.RoleName.ToLower() == "chef") && notification.Message.ToLower().Contains("item")))
+                        {
+                            AddUserNotificationToDictionary(user.UserId, notificationId);
+                        }
+                        else if (user.Role.RoleName.ToLower() == "employee" && (notification.Message.Contains("item") || notification.Message.ToLower().Contains("recommended menu")))
+                        {
+                            AddUserNotificationToDictionary(user.UserId, notificationId);
+                        }
                     }
                 }
-            }
 
-            return notificationId;
+                return notificationId;
+            }
+            catch(Exception ex)
+            {
+                return 0;
+            }
+            
         }
 
         public async Task<ServerResponse> GetNotifications(int userId = 0)
@@ -57,14 +66,7 @@ namespace RecommendationEngineServer.Services
 
                 if (userId != 0)
                 {
-                    User user = await _userRepository.GetById(userId);
-
-                    if (user == null)
-                    {
-                        response.Name = "Error";
-                        response.Value = "User not found.";
-                        return response;
-                    }
+                    User user = await _userRepository.GetById(userId) ?? throw new Exception("User not found.");
 
                     switch (user.RoleId)
                     {
@@ -81,21 +83,13 @@ namespace RecommendationEngineServer.Services
 
                 List<Notification> notifications = (await _notificationRepository.GetList(predicate)).ToList();
 
-                if (!notifications.Any())
-                {
-                    response.Name = "Success";
-                    response.Value = "No new notifications.";
-                }
-                else
-                {
-                    response.Name = "Success";
-                    response.Value = notifications;
-                }
+                response.Name = "Success";
+                response.Value = notifications.Any() ? notifications : "No new notifications.";
+
             }
             catch (Exception ex)
             {
-                response.Name = "Error";
-                response.Value = $"Error retrieving notifications: {ex.Message}";
+                response = ResponseHelper.CreateResponse("Error", $"Error retrieving notifications: {ex.Message}");
             }
 
             return response;
@@ -105,29 +99,18 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> UpdateNotificationStatus(int notificationId)
         {
             ServerResponse response = new ServerResponse();
-
-            Notification notification = await _notificationRepository.GetById(notificationId);
-
-            if (notification == null)
-            {
-                response.Name = "Error";
-                response.Value = "Notification not found.";
-
-                return response;
-            }   
-
-            notification.IsDelivered = !notification.IsDelivered? true : notification.IsDelivered;
-
+            
             try
             {
+                Notification notification = await _notificationRepository.GetById(notificationId) ?? throw new Exception("Notification not found.");
+                notification.IsDelivered = !notification.IsDelivered ? true : notification.IsDelivered;
                 await _notificationRepository.Update(notification);
-                response.Name = "Update";
-                response.Value = "Updated succesfully";
+
+                response = ResponseHelper.CreateResponse("Update", "Updated succesfully");
             }
             catch (Exception ex)
             {
-                response.Name = "Error";
-                response.Value = ex.Message;
+                response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
 
             return response;

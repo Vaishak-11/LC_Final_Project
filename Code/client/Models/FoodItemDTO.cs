@@ -24,7 +24,7 @@ namespace RecommendationEngineClient.Models
         Breakfast=1,
         Lunch=2,
         Dinner=3,
-        Beverages=4,
-        None
+        Beverage=4,
+        None=0
     }
 }

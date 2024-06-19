@@ -48,8 +48,8 @@ namespace RecommendationEngineClient
         private async Task HandleLoginorRegister()
         {
             Console.WriteLine("Please register/ login first. Enter 'a' for login 'b' for creating account");
-            string loginOption = Console.ReadLine()?.ToLower().Trim();
-            string loginCommand = null;
+            string? loginOption = Console.ReadLine()?.ToLower().Trim();
+            string? loginCommand;
 
             switch (loginOption)
             {
@@ -130,6 +130,8 @@ namespace RecommendationEngineClient
             Console.WriteLine("2. Get Feedback List");
             Console.WriteLine("3. Update Recommended Items");
             Console.WriteLine("4. Get recommended items for a particular date");
+            Console.WriteLine("5. Get Menu Items");
+            Console.WriteLine("6.Get Orders for a particular date.");
             Console.WriteLine("Logout");
             Console.WriteLine("Enter the operation you want to perform:");
         }
@@ -162,6 +164,7 @@ namespace RecommendationEngineClient
                         Console.WriteLine("Invalid User.");
                         break;
                 }
+
                 _welcomeMessageShown = true;
             }
         }

@@ -15,35 +15,34 @@ namespace RecommendationEngineClient
                 {
                     using (NetworkStream stream = client.GetStream())
                     {
+                        // Send the request to the server
                         byte[] data = Encoding.ASCII.GetBytes(request);
                         stream.Write(data, 0, data.Length);
 
                         byte[] buffer = new byte[1024];
-                        int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                        string response = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                        StringBuilder responseBuilder = new StringBuilder();
+                        int bytesRead = 0;
 
+                        // Read the response from the server
+                        do
+                        {
+                            bytesRead = stream.Read(buffer, 0, buffer.Length);
+                            responseBuilder.Append(Encoding.ASCII.GetString(buffer, 0, bytesRead));
+                        }
+                        while (bytesRead > 0 && stream.DataAvailable);
+
+                        string response = responseBuilder.ToString();
+
+                        // Process the response
                         string[] responseParts = response.Split('#');
-                        if (responseParts.Length >= 4)
+                        if (responseParts.Length >= 2)
                         {
                             ServerResponse serverResponse = new ServerResponse();
                             serverResponse.Name = responseParts[0];
 
                             if (request.Contains("login"))
                             {
-                                var responseValueParts = responseParts[1].Split('%');
-
-                                if (responseValueParts.Length > 1)
-                                {
-                                    serverResponse.Value = new
-                                    {
-                                        Message = responseValueParts[0],
-                                        Notifications = JsonSerializer.Deserialize<List<string>>(responseValueParts[1])
-                                    };
-                                }
-                                else
-                                {
-                                    serverResponse.Value = responseValueParts[0];
-                                }
+                                serverResponse.Value = responseParts[1];
 
                                 serverResponse.UserId = Convert.ToInt32(responseParts[2]);
                                 serverResponse.RoleId = Convert.ToInt32(responseParts[3]);
@@ -86,9 +85,9 @@ namespace RecommendationEngineClient
         private static bool IsJsonObject(string str)
         {
             str = str.Trim();
-            return (str.StartsWith("{") && str.EndsWith("}")) || 
-                   (str.StartsWith("[") && str.EndsWith("]"));   
+            return (str.StartsWith("{") && str.EndsWith("}")) ||
+                   (str.StartsWith("[") && str.EndsWith("]"));
         }
     }
 }
-    
+
