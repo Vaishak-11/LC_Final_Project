@@ -10,6 +10,7 @@ using ServerUnitTests.testData;
 using System.Linq.Expressions;
 using System.Text.Json;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 namespace ServerUnitTests.ServiceTests
 {
@@ -23,6 +24,7 @@ namespace ServerUnitTests.ServiceTests
         private Mock<IFoodItemRepository> _mockFoodItemRepository;
         private Mock<IFeedbackRepository> _mockFeedbackRepository;
         private  Mock<IMapper> _mockMapper;
+        private Mock<ILogger<FoodItemService>> _mockLogger;
 
         #endregion Private Properties
 
@@ -35,12 +37,15 @@ namespace ServerUnitTests.ServiceTests
             _mockNotificationService = new Mock<INotificationService>();
             _mockFeedbackRepository = new Mock<IFeedbackRepository>();
             _mockMapper = new Mock<IMapper>();
+            _mockLogger = new Mock<ILogger<FoodItemService>>();
+
 
             _foodItemService = new FoodItemService(
                 _mockFoodItemRepository.Object,
                 _mockMapper.Object,
                 _mockNotificationService.Object,
-                _mockFeedbackRepository.Object);
+                _mockFeedbackRepository.Object,
+                _mockLogger.Object);
         }
 
         #endregion Constructor

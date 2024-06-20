@@ -6,5 +6,7 @@ namespace RecommendationEngineServer.Services.Interfaces
         Task<ServerResponse> Login(UserLoginDTO user);
 
         Task<ServerResponse> RegisterUser(UserLoginDTO user);
+
+        Task<ServerResponse> Logout(int userId);
     }
 }

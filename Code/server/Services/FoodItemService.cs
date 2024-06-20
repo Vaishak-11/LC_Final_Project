@@ -1,5 +1,8 @@
 ﻿using AutoMapper;
 using Castle.Core.Internal;
+using Castle.Core.Logging;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using RecommendationEngineServer.Helpers;
 using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Models.Entities;
@@ -15,23 +18,26 @@ namespace RecommendationEngineServer.Services
         private readonly INotificationService _notificationService;
         private readonly IFeedbackRepository _feedbackRepository;
         private readonly IMapper _mapper;
+        private readonly ILogger<FoodItemService> _logger;
 
-        public FoodItemService(IFoodItemRepository foodItemRepository, IMapper mapper, INotificationService notificationService, IFeedbackRepository feedbackRepository)
+        public FoodItemService(IFoodItemRepository foodItemRepository, IMapper mapper, INotificationService notificationService, IFeedbackRepository feedbackRepository, ILogger<FoodItemService> logger)
         {
             _foodItemRepository = foodItemRepository;
             _notificationService = notificationService;
             _mapper = mapper;
             _feedbackRepository = feedbackRepository;
+            _logger = logger;
         }
 
         public async Task<ServerResponse> Add(FoodItemDTO item)
         {
             ServerResponse response = new ServerResponse();
-
+            _logger.LogInformation($"Add food item method called by userId: {UserData.UserId}, DateTime: {DateTime.Now}");
             try
             {
                 if (item == null)
                 {
+                    _logger.LogError("Invalid item.");
                     throw new ArgumentException("Invalid item. Enter proper details.");
                 }
 
@@ -39,6 +45,7 @@ namespace RecommendationEngineServer.Services
 
                 if (existingItem != null)
                 {
+                    _logger.LogError("Item already exists.");
                     throw new ArgumentException("This item name already exists.");
                 }
 
@@ -47,6 +54,7 @@ namespace RecommendationEngineServer.Services
 
                 string message = itemId > 0 ? "Item added successfully." : "Adding item failed.";
                 response = ResponseHelper.CreateResponse("AddItem", message);
+                _logger.LogInformation($"{message} , DateTime: {DateTime.Now}");
 
                 if (itemId > 0)
                 {
@@ -61,6 +69,7 @@ namespace RecommendationEngineServer.Services
             catch (Exception ex)
             {
                 response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
+                _logger.LogError($"message: {ex.Message}, DateTime: {DateTime.Now}");
             }
 
             return response;
@@ -69,13 +78,15 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> GetList()
         {
             var response = new ServerResponse();
+            _logger.LogInformation($"message: get feedbacks method called by userId: {UserData.UserId}, DateTime: {DateTime.Now}");
 
             try
             {
-                List<FoodItem> itemList = (await _foodItemRepository.GetList()).ToList();
+                List<FoodItem> itemList = (await _foodItemRepository.GetList(ft=> ft.IsAvailable == true)).ToList();
 
                 if (!itemList.Any())
                 {
+                    _logger.LogError($"No items found. DateTime: {DateTime.Now}");
                     throw new Exception("No items found.");
                 }
 
@@ -85,7 +96,7 @@ namespace RecommendationEngineServer.Services
                 var itemTasks = itemList.Select(async foodItem =>
                 {
                     var feedbacks = feedbackList.Where(f => f.FoodItemId == foodItem.FoodItemId).ToList();
-                    var averageRating = feedbacks.Any() ? feedbacks.Average(f => f.Rating) : 0;
+                    var averageRating = feedbacks.Any() ? Math.Round(feedbacks.Average(f => f.Rating), 2) : 0;
                     var comments = feedbacks.Any() ? feedbacks.Select(f => f.Comment).ToList() : new List<string>();
                     var overallRating = await SentimentAnlysisHelper.AnalyzeSentiments(comments, averageRating);
 
@@ -107,6 +118,7 @@ namespace RecommendationEngineServer.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError($"message: {ex.Message}, DateTime: {DateTime.Now}");
                 response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
 
@@ -116,11 +128,13 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> Update(string oldName, FoodItemDTO itemDto, string avilability)
         {
             ServerResponse response = new ServerResponse();
+            _logger.LogInformation($"Update food item method called by userId: {UserData.UserId}, DateTime: {DateTime.Now}");
 
             try
             {
                 if (itemDto == null)
                 {
+                    _logger.LogError("Invalid item.");
                     throw new ArgumentException("Invalid item. Enter proper details.");
                 }
 
@@ -128,6 +142,7 @@ namespace RecommendationEngineServer.Services
 
                 if (oldItem == null)
                 {
+                    _logger.LogError("Item not found.");
                     throw new Exception("Item not found.");
                 }
 
@@ -135,6 +150,7 @@ namespace RecommendationEngineServer.Services
 
                 if (existingItem != null && existingItem.FoodItemId != oldItem.FoodItemId)
                 {
+                    _logger.LogError("Item already exists.");
                     throw new ArgumentException("This item name already exists.");
                 }
 
@@ -154,6 +170,7 @@ namespace RecommendationEngineServer.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError($"message: {ex.Message}, DateTime: {DateTime.Now}");
                 response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
 
@@ -163,14 +180,24 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> Delete(string itemName)
         {
             ServerResponse response = new ServerResponse();
+            _logger.LogInformation($"Delete food item method called by userId: {UserData.UserId}, DateTime: {DateTime.Now}");
 
             try
             {
                 FoodItem item = await _foodItemRepository.GetByItemName(itemName) ?? throw new Exception("Item not found.");
-;
-                await _foodItemRepository.Delete(item.FoodItemId);
+                bool hasAssociatedOrders = await _foodItemRepository.HasAssociatedOrders(item.FoodItemId);
+                if (hasAssociatedOrders)
+                {
+                    await _foodItemRepository.Delete(item.FoodItemId);
+                }
+                else
+                {
+                    item.IsAvailable = false;
+                    await _foodItemRepository.Update(item);
+                }
 
                 response  = ResponseHelper.CreateResponse("Delete", "Deleted successfully");
+                _logger.LogInformation($"Item {item.ItemName} deleted successfully");
                 
                 int notificationId = await _notificationService.AddNotification(new Notification
                 {
@@ -181,6 +208,7 @@ namespace RecommendationEngineServer.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError($"message: {ex.Message}, DateTime: {DateTime.Now}");
                 response= ResponseHelper.CreateResponse("Error",ex.Message.ToString());
             }
 
@@ -190,6 +218,7 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> GetFoodItemWithFeedbackReport(int month, int year)
         {
             ServerResponse serverResponse = new ServerResponse();
+            _logger.LogInformation($"Get food item with feedback report method called by userId: {UserData.UserId}, DateTime: {DateTime.Now}");
             try
             {
                 List<FoodItem> foodItems = (await _foodItemRepository.GetList()).ToList();
@@ -203,13 +232,14 @@ namespace RecommendationEngineServer.Services
 
                 if (feedbacks.IsNullOrEmpty())
                 {
+                    _logger.LogInformation("No feedbacks are given for the given month and year.");
                     return ResponseHelper.CreateResponse("Report", "No feedbacks are given for the given month and year.");
                 }
 
                 List<FoodReportDTO> foodItemWithFeedbacks = foodItems.Select(f =>
                 {
                     List<Feedback> itemFeedbacks = feedbacks.Where(feedback => feedback.FoodItemId == f.FoodItemId).ToList();
-                    double averageRating = itemFeedbacks.Any() ? itemFeedbacks.Average(feedback => feedback.Rating) : 0;
+                    double averageRating = itemFeedbacks.Any() ? Math.Round(itemFeedbacks.Average(feedback => feedback.Rating), 2) : 0;
                     List<string> comments = itemFeedbacks.Select(feedback => feedback.Comment).ToList();
 
                     return new FoodReportDTO
@@ -224,6 +254,7 @@ namespace RecommendationEngineServer.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError($"message: {ex.Message}, DateTime: {DateTime.Now}");
                 serverResponse = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
 
@@ -240,6 +271,5 @@ namespace RecommendationEngineServer.Services
 
             return itemDto;
         }
-
     }
 }

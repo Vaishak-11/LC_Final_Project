@@ -1,4 +1,5 @@
-﻿using RecommendationEngineServer.Helpers;
+﻿using Microsoft.Extensions.Logging;
+using RecommendationEngineServer.Helpers;
 using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Models.Entities;
 using RecommendationEngineServer.Repositories.Interfaces;
@@ -13,24 +14,28 @@ namespace RecommendationEngineServer.Services
         private readonly IFoodItemRepository _foodItemRepository;
         private readonly IOrderItemRepository _orderItemRepository;
         private readonly IRecommendedMenuRepository _recommendedMenuRepository;
+        private readonly ILogger<OrderService> _logger;
 
-        public OrderService(IOrderRepository orderRepository, IOrderItemRepository orderItemRepository, IFoodItemRepository foodItemRepository, IRecommendedMenuRepository recommendedMenuRepository)
+        public OrderService(IOrderRepository orderRepository, IOrderItemRepository orderItemRepository, IFoodItemRepository foodItemRepository, IRecommendedMenuRepository recommendedMenuRepository, ILogger<OrderService> logger)
         {
             _orderRepository = orderRepository;
             _foodItemRepository = foodItemRepository;
             _orderItemRepository = orderItemRepository;
             _recommendedMenuRepository = recommendedMenuRepository;
+            _logger = logger;
         }
 
 
         public async Task<ServerResponse> AddOrder(OrderDTO order)
         {
             ServerResponse response = new ServerResponse();
+            _logger.LogInformation($"Add order method called for {order.ItemNames}; UserId: {order.UserId} DateTime:{DateTime.Now}");
 
             try 
             {
                 if (order == null || !order.ItemNames.Any())
                 {
+                    _logger.LogError("Invalid order details.");
                     response =ResponseHelper.CreateResponse("Error", "Invalid order details. Enter proper details.");
                     return response;
                 }
@@ -43,6 +48,7 @@ namespace RecommendationEngineServer.Services
                     response.Name = "Error";
                     string nonexistingItemsList = string.Join(", ", nonexistingItems);
                     response.Value = $"These item names do not exist: {nonexistingItemsList}";
+                    _logger.LogError($"These item names do not exist: {nonexistingItemsList}");
 
                     return response;
                 }
@@ -52,6 +58,7 @@ namespace RecommendationEngineServer.Services
 
                 if (!recommendedMenus.Any())
                 {
+                    _logger.LogError("No recommended menus found for the given items.");
                     return ResponseHelper.CreateResponse("Error", "No recommended menus found for the given items.");
                 }
 
@@ -81,6 +88,7 @@ namespace RecommendationEngineServer.Services
                         }
                         else
                         {
+                            _logger.LogError($"Recommended menu for food item '{itemName}' not found.");
                             return ResponseHelper.CreateResponse("Error", $"Recommended menu for food item '{itemName}' not found.");
                         }
                     }
@@ -89,11 +97,13 @@ namespace RecommendationEngineServer.Services
                 }
                 else
                 {
+                    _logger.LogError("Failed to add order.");
                     response = ResponseHelper.CreateResponse("Error", "Failed to add order.");
                 }
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error adding order: {ex.Message}");
                 response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
 
@@ -103,6 +113,7 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> GetOrders(DateTime? date = null)
         {
             ServerResponse response = new ServerResponse();
+            _logger.LogInformation($"Get orders method called by userId: {UserData.UserId} for {date}; DateTime:{DateTime.Now}");
 
             try
             {
@@ -110,6 +121,7 @@ namespace RecommendationEngineServer.Services
 
                 if (!orders.Any())
                 {
+                    _logger.LogError("No orders found.");
                     return ResponseHelper.CreateResponse("GetOrders", "No orders found.");
                 }
 
@@ -118,6 +130,7 @@ namespace RecommendationEngineServer.Services
 
                 if (!orderItems.Any())
                 {
+                    _logger.LogError("No order items found.");
                     return ResponseHelper.CreateResponse("GetOrders", "No order items found.");
                 }
 
@@ -167,6 +180,7 @@ namespace RecommendationEngineServer.Services
             }
             catch(Exception ex)
             {
+                _logger.LogError($"Error fetching orders: {ex.Message}");
                 response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
             }
 

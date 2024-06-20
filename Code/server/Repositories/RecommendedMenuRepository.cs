@@ -21,8 +21,10 @@ namespace RecommendationEngineServer.Repositories
 
         public async Task<List<RecommendedMenu>> GetByItemIds(List<int> itemIds)
         {
+            DateTime currentDateTime = DateTime.Now.AddDays(1);
+
             return await _context.RecommendedMenus
-            .Where(r => (itemIds.Contains(r.FoodItemId)) && r.RecommendationDate ==DateTime.Now.AddDays(1))
+            .Where(r => (itemIds.Contains(r.FoodItemId)) && r.RecommendationDate.Date == currentDateTime.Date)
             .ToListAsync();
         }
 

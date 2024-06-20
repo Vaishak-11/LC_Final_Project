@@ -10,35 +10,33 @@ namespace RecommendationEngineClient
 
         public async Task DisplayOperations()
         {
-            Label:
-            while (!_isUserLoggedIn)
+            while (true)
             {
-                await HandleLoginorRegister();
-            }
-
-            ShowWelcomeMessage();
-            _isLogoutRequested = false;
-
-            while (!_isLogoutRequested && _isUserLoggedIn)
-            {
-                await DisplayRoleBasedOperations();
-
-                string command = Console.ReadLine();
-
-                if (command.ToLower() == "logout")
+                while (!_isUserLoggedIn)
                 {
-                    _isLogoutRequested = true;
-                    _isUserLoggedIn = false;
-                    _welcomeMessageShown = false;
-
-                    goto Label;
+                    await HandleLoginorRegister();
                 }
-                else
+
+                ShowWelcomeMessage();
+                _isLogoutRequested = false;
+
+                while (!_isLogoutRequested && _isUserLoggedIn)
                 {
+                    await DisplayRoleBasedOperations();
+
+                    string command = Console.ReadLine();
+
                     string request = ServerRequestBuilder.BuildRequest(command);
                     if (request != null)
                     {
                         ServerResponse response = ServerCommunicator.SendRequestToServer(request);
+                        if (command.ToLower() == "logout")
+                        {
+                            _isLogoutRequested = true;
+                            _isUserLoggedIn = false;
+                            _welcomeMessageShown = false;
+                        }
+
                         ResponseHandler.HandleResponse(response);
                     }
                 }
@@ -88,7 +86,6 @@ namespace RecommendationEngineClient
                 else
                 {
                     Console.WriteLine($"{loginCommand} failed. Please try again.");
-
                 }
             }
         }
@@ -115,7 +112,7 @@ namespace RecommendationEngineClient
         private async Task DisplayAdminOperations()
         {
             Console.WriteLine("1. Add Menu Item");
-            Console.WriteLine("2. Get Menu Items");
+            Console.WriteLine("2. Get available Menu Items");
             Console.WriteLine("3. Update Menu Item");
             Console.WriteLine("4. Delete Menu Item");
             Console.WriteLine("5. Get Monthly Food report");
@@ -130,8 +127,9 @@ namespace RecommendationEngineClient
             Console.WriteLine("2. Get Feedback List");
             Console.WriteLine("3. Update Recommended Items");
             Console.WriteLine("4. Get recommended items for a particular date");
-            Console.WriteLine("5. Get Menu Items");
-            Console.WriteLine("6.Get Orders for a particular date.");
+            Console.WriteLine("5. Get available Menu Items");
+            Console.WriteLine("6. Get Orders for a particular date.");
+            Console.WriteLine("7. Get Monthly Food report");
             Console.WriteLine("Logout");
             Console.WriteLine("Enter the operation you want to perform:");
         }

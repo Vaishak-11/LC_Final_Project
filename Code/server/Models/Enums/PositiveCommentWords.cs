@@ -18,7 +18,15 @@
         Satisfying,
         Mouthwatering,
         Rich,
-        Aromatic
+        Aromatic, 
+        wellcooked,
+        loved
+    }
+
+    public enum SpecialCommentWords
+    {
+        Sweet,
+        Crunchy
     }
 
 }

@@ -65,6 +65,9 @@ namespace RecommendationEngineClient
                 case "6":
                     return BuildGetFeedbacksRequest();
 
+                case "logout":
+                    return BuildLogoutrequest();
+
                 default:
                     Console.WriteLine("Unknown command.");
                     return null;
@@ -86,6 +89,9 @@ namespace RecommendationEngineClient
                 case "add order":
                 case "3":
                     return BuildAddOrderRequest();
+
+                case "logout":
+                    return BuildLogoutrequest();
 
                 default:
                     Console.WriteLine("Unknown command.");
@@ -120,6 +126,13 @@ namespace RecommendationEngineClient
                 case "get orders":
                 case "6":
                     return BuildGetOrdersRequest();
+
+                case "get monthly food report":
+                case "7":
+                    return BuildFoodReportRequestRequest();
+
+                case "logout":
+                    return BuildLogoutrequest();
 
                 default:
                     Console.WriteLine("Unknown command.");
@@ -156,6 +169,7 @@ namespace RecommendationEngineClient
                     Console.WriteLine("Enter your Employee Code:");
                     user.UserName = Console.ReadLine();
                     break;
+
                 default:
                     Console.WriteLine("Enter your UserName:");
                     user.UserName = Console.ReadLine();
@@ -169,11 +183,16 @@ namespace RecommendationEngineClient
             return $"login#{userJson}";
         }
 
+        private static string BuildLogoutrequest()
+        {
+            return $"logout#{UserData.UserId}";
+        }
+
         private static string BuildRegisterRequest()
         {
             string role = null;
-            Console.WriteLine("Which role would you like to log in as? (Employee, Admin, Chef)");
 
+            Console.WriteLine("Which role would you like to log in as? (Employee, Admin, Chef)");
             while (true)
             {
                 Console.Write("Enter your role: ");
@@ -575,7 +594,7 @@ namespace RecommendationEngineClient
                 }
                 else
                 {
-                    Console.WriteLine("Invalid date format. Using current date instead.");
+                    Console.WriteLine("Invalid date format. Using current order date instead.");
                 }
             }
 

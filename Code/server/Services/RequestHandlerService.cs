@@ -58,6 +58,8 @@ namespace RecommendationEngineServer.Services
                     return await HandleGetOrdersRequest(request, parts);
                 case "getfoodreport":
                     return await HandleGetReportRequest(request, parts);
+                case "logout":
+                    return await HandleLogoutRequest(request, parts);  
                 default:
                     throw new ArgumentException("Unknown command.");
             }
@@ -79,6 +81,20 @@ namespace RecommendationEngineServer.Services
             catch (JsonException)
             {
                 return ResponseHelper.CreateResponse("Error", "Invalid user details format.");
+            }
+        }
+
+        private async Task<ServerResponse> HandleLogoutRequest(string request, string[] parts)
+        {
+            if (parts.Length < 2)
+            {
+                return ResponseHelper.CreateResponse("Error", "Invalid logout command. Usage: logout <userid>");
+            }
+            else
+            {
+                int userId = int.Parse(parts[1]);
+                Console.WriteLine($"Processing logout command: userId={userId}");
+                return await _userService.Logout(userId);
             }
         }
 

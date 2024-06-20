@@ -4,6 +4,10 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NLog;
+using NLog.Extensions.Logging;
+using NLog.Web;
 using RecommendationEngineServer.Context;
 using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Profiles;
@@ -20,23 +24,37 @@ namespace RecommendationEngineServer
 
         static void Main(string[] args)
         {
-            var configuration = new ConfigurationBuilder()
+            var logger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
+
+            try
+            {
+                var configuration = new ConfigurationBuilder()
                                  .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
                                  .AddJsonFile("appsettings.json")
                                  .Build();
 
-            string connectionString = configuration.GetConnectionString("DefaultConnection");
+                var services = new ServiceCollection();
+                ConfigureServices(services, configuration);
 
-            var services = new ServiceCollection();
-            ConfigureServices(services, connectionString);
+                ServiceProvider = services.BuildServiceProvider();
 
-            ServiceProvider = services.BuildServiceProvider();
-
-            StartServer();
+                StartServer();
+            }
+            catch (Exception exception)
+            {
+                logger.Error(exception, "Stopped program because of exception");
+                throw new Exception(exception.Message);
+            }
+            finally
+            {
+                NLog.LogManager.Shutdown();
+            }
         }
 
-        private static void ConfigureServices(IServiceCollection services, string connectionString)
+        private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
         {
+            string connectionString = configuration.GetConnectionString("DefaultConnection");
+
             services.AddDbContext<ServerDbContext>(options =>
                 options.UseSqlServer(connectionString));
 
@@ -60,6 +78,13 @@ namespace RecommendationEngineServer
             services.AddAutoMapper(config => config.AddProfile<MapProfile>(), AppDomain.CurrentDomain.GetAssemblies());
 
             services.AddScoped<IRequestHandlerService, RequestHandlerService>();
+
+            services.AddLogging(loggingBuilder =>
+            {
+                loggingBuilder.ClearProviders();
+                loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                loggingBuilder.AddNLog(configuration);
+            });
         }
 
         static void StartServer()

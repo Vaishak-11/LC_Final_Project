@@ -14,20 +14,22 @@ namespace RecommendationEngineServer.Helpers
             {
                 string normalizedComment = comment.ToLower();
 
-                if (normalizedComment.Contains("not"))
+                if (normalizedComment.Contains("but"))
                 {
-                    sentimentScore = await HandleNotComment(comment, sentimentScore);
+                    string[] parts = normalizedComment.Split(new string[] { "but" }, StringSplitOptions.None);
+
+                    if (parts.Length == 2)
+                    {
+                        sentimentScore += await AnalyzeComment(parts[1].Trim(),sentimentScore);
+                    }
+                    else
+                    {
+                        sentimentScore += await AnalyzeComment(normalizedComment, sentimentScore);
+                    }
                 }
                 else
                 {
-                    if (ContainsPositiveWord(normalizedComment) && !ContainsNegativeWord(normalizedComment))
-                    {
-                        ++sentimentScore;
-                    }
-                    else if (ContainsNegativeWord(normalizedComment) && !ContainsPositiveWord(normalizedComment))
-                    {
-                        --sentimentScore;
-                    }
+                    sentimentScore += await AnalyzeComment(normalizedComment, sentimentScore);
                 }
             }
 
@@ -53,17 +55,44 @@ namespace RecommendationEngineServer.Helpers
             return overallRating;
         }
 
+        private static async Task<int> AnalyzeComment(string comment,int sentimentScore)
+        {
+            if (comment.Contains("not"))
+            {
+                sentimentScore += await HandleNotComment(comment, sentimentScore);
+            }
+            else
+            {
+                if (ContainsIntensityWord(comment))
+                {
+                    sentimentScore += await HandleCommentWithIntensityWords(comment, sentimentScore);
+                }
+                else
+                {
+                    if (ContainsPositiveWord(comment) && !ContainsNegativeWord(comment))
+                    {
+                        ++sentimentScore;
+                    }
+                    else if (ContainsNegativeWord(comment) && !ContainsPositiveWord(comment))
+                    {
+                        --sentimentScore;
+                    }
+                }
+            }
+
+            return sentimentScore;
+        }
+
         private static async Task<int> HandleNotComment(string comment, int sentimentScore)
         {
             string[] words = comment.ToLower().Split(' ');
-            string[] intensityWords = { "very", "too", "much" };
 
             bool isNegativeContext = false;
             for (int i = 0; i < words.Length; i++)
             {
                 if (words[i] == "not")
                 {
-                    if (i + 1 < words.Length && intensityWords.Contains(words[i + 1]))
+                    if (i + 1 < words.Length && Enum.TryParse(words[i+1], true, out IntensityWords intensityWord))
                     {
                         i++;
                     }
@@ -74,13 +103,17 @@ namespace RecommendationEngineServer.Helpers
 
                 if (isNegativeContext)
                 {
-                    if (Enum.TryParse(words[i], true, out PositiveCommentWords positiveWord))
+                    if (Enum.TryParse(words[i], true, out SpecialCommentWords specialPositiveWord))
                     {
-                        sentimentScore--;
+                        --sentimentScore;
                     }
                     else if (Enum.TryParse(words[i], true, out NegativeCommentWords negativeWord))
                     {
-                        sentimentScore++;
+                        --sentimentScore;
+                    }
+                    else if(Enum.TryParse(words[i], true, out PositiveCommentWords positiveWord))
+                    {
+                        ++sentimentScore;
                     }
 
                     isNegativeContext = false;
@@ -89,11 +122,40 @@ namespace RecommendationEngineServer.Helpers
                 {
                     if (Enum.TryParse(words[i], true, out PositiveCommentWords positiveWord))
                     {
-                        sentimentScore++;
+                        ++sentimentScore;
                     }
                     else if (Enum.TryParse(words[i], true, out NegativeCommentWords negativeWord))
                     {
-                        sentimentScore--;
+                        --sentimentScore;
+                    }
+                }
+            }
+
+            return sentimentScore;
+        }
+
+        private static async Task<int> HandleCommentWithIntensityWords(string comment, int sentimentScore)
+        {
+            string[] words = comment.ToLower().Split(' ');
+
+            for (int i = 0; i < words.Length; i++)
+            {
+                if (Enum.TryParse(words[i], true, out IntensityWords intensityWord))
+                {
+                    if (i + 1 < words.Length)
+                    {
+                        if (Enum.TryParse(words[i + 1], true, out PositiveCommentWords positiveWord))
+                        {
+                            ++sentimentScore;
+                        }
+                        else if (Enum.TryParse(words[i + 1], true, out NegativeCommentWords negativeWord))
+                        {
+                            --sentimentScore;
+                        }
+                        else if (Enum.TryParse(words[i + 1], true, out SpecialCommentWords specialCaseWord))
+                        {
+                            --sentimentScore;
+                        }
                     }
                 }
             }
@@ -116,6 +178,18 @@ namespace RecommendationEngineServer.Helpers
         public static bool ContainsNegativeWord(string comment)
         {
             foreach (NegativeCommentWords word in Enum.GetValues(typeof(NegativeCommentWords)))
+            {
+                if (comment.Contains(word.ToString().ToLower()))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public static bool ContainsIntensityWord(string comment)
+        {
+            foreach (IntensityWords word in Enum.GetValues(typeof(IntensityWords)))
             {
                 if (comment.Contains(word.ToString().ToLower()))
                 {

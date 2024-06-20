@@ -30,7 +30,6 @@ namespace RecommendationEngineServer.Repositories
 
                 if (existingEntity != null)
                 {
-                    // Update existingEntity with values from entity
                     _context.Entry(existingEntity).CurrentValues.SetValues(entity);
                     await _context.SaveChangesAsync();
                 }
@@ -41,10 +40,13 @@ namespace RecommendationEngineServer.Repositories
             }
             catch (Exception ex)
             {
-                // Handle specific exceptions or log errors
                 throw new Exception("Error updating food item", ex);
             }
         }
 
+        public async Task<bool> HasAssociatedOrders(int foodItemId)
+        {
+            return _context.OrderItems.Any(m => m.RecommendedMenu.FoodItemId == foodItemId);
+        }
     }
 }

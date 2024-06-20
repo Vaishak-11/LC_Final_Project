@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.Extensions.Logging;
 using RecommendationEngineServer.Helpers;
 using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Models.Entities;
@@ -17,24 +18,28 @@ namespace RecommendationEngineServer.Services
         private readonly IMapper _mapper;
         private readonly IFoodItemRepository _foodItemRepository;
         private readonly IFeedbackRepository _feedbackRepository;
+        private readonly ILogger<RecommendedMenuService> _logger;
 
-        public RecommendedMenuService(IRecommendedMenuRepository recommendedMenuRepository, IFoodItemRepository foodItemRepository, IMapper mapper, INotificationService notificationService, IFeedbackRepository feedbackRepository)
+        public RecommendedMenuService(IRecommendedMenuRepository recommendedMenuRepository, IFoodItemRepository foodItemRepository, IMapper mapper, INotificationService notificationService, IFeedbackRepository feedbackRepository, ILogger<RecommendedMenuService> logger)
         {
             _recommendedMenuRepository = recommendedMenuRepository;
             _foodItemRepository = foodItemRepository;
             _mapper = mapper;
             _notificationService = notificationService;
             _feedbackRepository = feedbackRepository;
+            _logger = logger;
         }
 
         public async Task<ServerResponse> AddRecommendedMenu(List<RecommendedMenuDTO> recommendations)
         {
             ServerResponse response = new ServerResponse();
+            _logger.LogInformation($"Adding recommended items {recommendations.Select(r=>r.ItemName)}by {recommendations.First().UserId}");
 
             try
             {
                 if (recommendations == null || !recommendations.Any())
                 {
+                    _logger.LogError("Invalid recommendations.");
                     throw new ArgumentException("Invalid recommendations. Please provide valid data.");
                 }
 
@@ -46,6 +51,7 @@ namespace RecommendationEngineServer.Services
                 if (nonexistingItems.Any())
                 {
                     string nonexistingItemsList = string.Join(", ", nonexistingItems);
+                    _logger.LogError($"These item names do not exist: {nonexistingItemsList}");
                     throw new Exception($"These item names do not exist: {nonexistingItemsList}");
                 }
 
@@ -64,6 +70,7 @@ namespace RecommendationEngineServer.Services
                 if (success > 0)
                 {
                     response = ResponseHelper.CreateResponse("AddRecommendedItems", "Recommended items added successfully.");
+                    _logger.LogInformation($"Recommended items added successfully.");
 
                     int notificationId = await _notificationService.AddNotification(new Notification
                     {
@@ -74,11 +81,13 @@ namespace RecommendationEngineServer.Services
                 }
                 else
                 {
+                    _logger.LogError("Adding recommended items failed.");
                     response = ResponseHelper.CreateResponse("Error", "Adding recommended items failed.");
                 }
             }
             catch (Exception ex)
             {
+                _logger.LogError($"An error occurred: {ex.Message}");
                 response = ResponseHelper.CreateResponse("Error", $"An error occurred: {ex.Message}");
             }
 
@@ -88,6 +97,7 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> GetRecommendedMenu(DateTime? date = null)
         {
             ServerResponse response = new ServerResponse();
+            _logger.LogInformation($"Getting recommended items by userId: {UserData.UserId} for {date}");
 
             try
             {
@@ -95,6 +105,7 @@ namespace RecommendationEngineServer.Services
 
                 if (!recommendationList.Any())
                 {
+                    _logger.LogError("No Menu is added to display.");
                     return ResponseHelper.CreateResponse("GetRecommendedMenu", "No Menu is added to display.");
                 }
 
@@ -137,6 +148,7 @@ namespace RecommendationEngineServer.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError($"An error occurred: {ex.Message}");
                 response = ResponseHelper.CreateResponse("Error", $"An error occurred: {ex.Message}");
             }
 
@@ -147,11 +159,13 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> UpdateRecommendedMenu(RecommendedMenuDTO recommendedMenu)
         {
             ServerResponse response = new ServerResponse();
+            _logger.LogInformation($"Updating recommended item {recommendedMenu.ItemName} by userId: {UserData.UserId}");
 
             try
             {
                 if (recommendedMenu == null)
                 {
+                    _logger.LogError("Invalid recommended menu details.");
                     throw new ArgumentException("Invalid recommended menu details. Please provide valid data.");
                 }
 
@@ -168,6 +182,7 @@ namespace RecommendationEngineServer.Services
                 await _recommendedMenuRepository.Update(existingRecommendedMenu);
 
                 response = ResponseHelper.CreateResponse("Update", "Updated successfully");
+                _logger.LogInformation("Recommended item updated successfully.");
 
                 int notificationId = await _notificationService.AddNotification(new Notification
                 {
@@ -178,6 +193,7 @@ namespace RecommendationEngineServer.Services
             }
             catch (Exception ex)
             {
+                _logger.LogError($"An error occurred: {ex.Message}");
                 response = ResponseHelper.CreateResponse("Error", $"An error occurred: {ex.Message}");
             }
 
@@ -189,6 +205,8 @@ namespace RecommendationEngineServer.Services
             List<string> selectedComments = new List<string>();
             Expression<Func<string, bool>> positiveCommentPredicate = (c => !string.IsNullOrWhiteSpace(c) && !c.ToLower().Contains("not") && SentimentAnlysisHelper.ContainsPositiveWord(c));
             Expression<Func<string, bool>> negativeCommentPredicate = (c => !string.IsNullOrWhiteSpace(c) && !c.ToLower().Contains("not") && SentimentAnlysisHelper.ContainsNegativeWord(c));
+
+            overallRating = overallRating.ToLower() == "neutral" ? "0" : overallRating.ToLower() == "positive" ? "1" : "-1";
 
             if (overallRating.ToLower() == "positive" || Convert.ToDecimal(overallRating) > 0)
             {

@@ -1,4 +1,6 @@
-﻿using RecommendationEngineServer.Models.DTOs;
+﻿using Microsoft.Extensions.Logging;
+using RecommendationEngineServer.Helpers;
+using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Models.Entities;
 using RecommendationEngineServer.Repositories.Interfaces;
 using RecommendationEngineServer.Services.Interfaces;
@@ -13,13 +15,15 @@ namespace RecommendationEngineServer.Services
         private readonly IRoleRepository _roleRepository;
         private readonly IEmployeeRepository _employeeRepository;
         private readonly INotificationService _notificationService;
+        private readonly ILogger<UserService> _logger;
 
-        public UserService(IUserRepository userRepository, IEmployeeRepository employeeRepository, IRoleRepository roleRepository, INotificationService notificationService)
+        public UserService(IUserRepository userRepository, IEmployeeRepository employeeRepository, IRoleRepository roleRepository, INotificationService notificationService, ILogger<UserService> logger)
         {
             _userRepository = userRepository;
             _employeeRepository = employeeRepository;
             _roleRepository = roleRepository;
             _notificationService = notificationService;
+            _logger = logger;
 
             InitializeNotificationDeliveryStatus().Wait();
         }
@@ -49,32 +53,32 @@ namespace RecommendationEngineServer.Services
 
                 if (userId > 0)
                 {
-                    if(roleId != 1)
+                    List<Notification> pendingNotifications = roleId != 1 ?await GetPendingNotifications(userId) : new List<Notification>();
+                    
+                    var loginResponse = new LoginResponse
                     {
-                        List<Notification> pendingNotifications = await GetPendingNotifications(userId);
+                        Message = loginMessage,
+                        Notifications = pendingNotifications.Select(n => n.Message).ToList()
+                    };
 
-                        var loginResponse = new LoginResponse
-                        {
-                            Message = loginMessage,
-                            Notifications = pendingNotifications.Select(n => n.Message).ToList()
-                        };
+                    response.Name = "Success";
+                    response.Value = JsonSerializer.Serialize(loginResponse);
+                    _logger.LogInformation($"userId: {userId}, name: {userLogin.UserName}, message:{loginMessage}, Date: {DateTime.Now}");
 
-                        response.Name = "Success";
-                        response.Value = JsonSerializer.Serialize(loginResponse);
+                    UserData.UserId = response.UserId;
+                    UserData.RoleId = response.RoleId;
 
-                        UserData.UserId = response.UserId;
-                        UserData.RoleId = response.RoleId;
-
-                        await HandleNotificationDeliveryStatus(userId, pendingNotifications);
-                    }
+                    await HandleNotificationDeliveryStatus(userId, pendingNotifications);
                 }
                 else
                 {
+                    _logger.LogError($"userId: {userId}, name: {userLogin.UserName}, message:Login failed. Invalid credentials., Date: {DateTime.Now}");
                     throw new Exception("Login failed. Invalid credentials.");
                 }
             }
             else
             {
+                _logger.LogError($"name: {userLogin.UserName}, message:Login failed.Invalid role., Date: {DateTime.Now}");
                 throw new Exception("Login failed.Invalid role.");
             }
 
@@ -92,6 +96,7 @@ namespace RecommendationEngineServer.Services
 
                 if (existingUser != null)
                 {
+                    _logger.LogError($"name: {userRegister.UserName}, message:Registration failed. This username already exists., Date: {DateTime.Now}");
                     throw new Exception("Registration failed. This username already exists. Try with a different userName");
                 }
 
@@ -111,13 +116,26 @@ namespace RecommendationEngineServer.Services
                     response.Name = "Register";
                     response.Value = (userId > 0) ? "Register successful." : "Register failed.";
                 }
+
+                _logger.LogInformation($"name: {userRegister.UserName}, message: {response.Value}, Date: {DateTime.Now}");
             }
             else
             {
+                _logger.LogError($"name: {userRegister.UserName}, message: Registration failed. Invalid role., Date: {DateTime.Now}");
                 throw new Exception("Registration failed. Invalid role.");
             }
 
             return response;
+        }
+
+        public async Task<ServerResponse> Logout(int userId)
+        {
+            UserData.UserId = 0;
+            UserData.RoleId = 0;
+
+            _logger.LogInformation($"userId: {userId}, message: Logout successful., Date: {DateTime.Now}");
+
+            return ResponseHelper.CreateResponse("Logout", "Logout successful.");
         }
 
         private static (string message, int userId, int roleId) ValidateEmployeeLogin(Employee employee, string name, string password)
