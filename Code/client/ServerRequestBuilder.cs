@@ -65,6 +65,18 @@ namespace RecommendationEngineClient
                 case "6":
                     return BuildGetFeedbacksRequest();
 
+                case "get discard menu list":
+                case "7":
+                    return BuildGetDiscardMenuRequest();
+
+                case "discard food item":
+                case "8":
+                    return BuildDiscardMenuRequest();
+
+                case "get detailed feedback for the item":
+                case "9":
+                    return BuildGetDetailedFeedbackRequest();
+
                 case "logout":
                     return BuildLogoutrequest();
 
@@ -89,6 +101,10 @@ namespace RecommendationEngineClient
                 case "add order":
                 case "3":
                     return BuildAddOrderRequest();
+
+                case "Provide detailed feedback for the item":
+                case "4":
+                    return BuildProvideDetailedFeedbackRequest();
 
                 case "logout":
                     return BuildLogoutrequest();
@@ -130,6 +146,18 @@ namespace RecommendationEngineClient
                 case "get monthly food report":
                 case "7":
                     return BuildFoodReportRequestRequest();
+
+                case "get discard menu list":
+                case "8":
+                    return BuildGetDiscardMenuRequest();
+
+                case "discard food item":
+                case "9":
+                    return BuildDiscardMenuRequest();
+
+                case "get detailed feedback for the item":
+                case "10":
+                    return BuildGetDetailedFeedbackRequest();
 
                 case "logout":
                     return BuildLogoutrequest();
@@ -600,6 +628,77 @@ namespace RecommendationEngineClient
 
             return $"getorders#{dateTime: yyyy-MM-dd}";
         }
+
+        private static string BuildGetDiscardMenuRequest()
+        {
+            return "getdiscardmenulist";
+        }
+
+        private static string BuildDiscardMenuRequest()
+        {
+            Console.Write("Enter the name of the item you want to remove from the menu list: ");
+            string itemName = Console.ReadLine();
+
+            return $"discardmenu#{itemName}";
+        }
+
+        private static string BuildGetDetailedFeedbackRequest()
+        {
+            while(true)
+            {
+                Console.WriteLine("1. Enter '1' to notify the employees to provide feedback");
+                Console.WriteLine("2. Enter '2' to Get detailed feedback.");
+                string option = Console.ReadLine().Trim();
+
+                Console.Write("Enter the name of the item: ");
+                string itemName = Console.ReadLine().Trim();
+
+                if (option == "1")
+                {
+                    return $"notifyemployees#{itemName}";
+                }
+                else if (option == "2")
+                {
+                    return $"getdetailedfeedback#{itemName}";
+                }
+                else
+                {
+                    Console.WriteLine("Invalid option. Please try again.");
+                }
+            }
+        }
+
+        private static string BuildProvideDetailedFeedbackRequest()
+        {
+              FeedbackDTO feedbackDTO = new FeedbackDTO();
+            feedbackDTO.UserId = UserData.UserId;
+            feedbackDTO.FeedbackDate = DateTime.Now;
+            feedbackDTO.Rating = 0;
+
+            while (string.IsNullOrWhiteSpace(feedbackDTO.ItemName))
+            {
+                Console.Write("Enter the menu item Name for which you want to add feedback: ");
+                feedbackDTO.ItemName = Console.ReadLine();
+            }
+            
+            while (string.IsNullOrWhiteSpace(feedbackDTO.Comment))
+            {
+                Console.WriteLine($"What didn’t you like about {feedbackDTO.ItemName}?: ");
+                feedbackDTO.Comment = Console.ReadLine();
+
+                Console.WriteLine($"How would you like {feedbackDTO.ItemName} to taste? ");
+                feedbackDTO.Comment += " " + Console.ReadLine();
+
+                Console.WriteLine($"What would you like to be improved in the dish? ");
+                feedbackDTO.Comment += " " + Console.ReadLine();
+
+                Console.WriteLine($"Share your mom’s recipe");
+                feedbackDTO.Comment += " " + Console.ReadLine();
+            }
+
+            string feedbackJson = JsonSerializer.Serialize(feedbackDTO);
+            return $"providedetailedfeedback#{feedbackJson}";   
+        } 
 
         private static FoodCategory ParseFoodCategory(string input)
         {

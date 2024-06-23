@@ -13,5 +13,10 @@ namespace RecommendationEngineServer.Services.Interfaces
         Task<ServerResponse> Delete(string itemName);
 
         Task<ServerResponse> GetFoodItemWithFeedbackReport(int month, int year);
+
+        Task<ServerResponse> GetDiscardFoodItemList();
+
+        Task<ServerResponse> DeleteDiscardMenu(string itemName);
+
     }
 }

@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Castle.Core.Internal;
 using Microsoft.Extensions.Logging;
 using RecommendationEngineServer.Helpers;
 using RecommendationEngineServer.Models.DTOs;
@@ -15,16 +16,18 @@ namespace RecommendationEngineServer.Services
         private readonly IFeedbackRepository _feedBackRepository;
         private readonly IFoodItemRepository _foodItemRepository;
         private readonly IOrderItemRepository _orderItemRepository;
+        private readonly INotificationService _notificationService;
         private readonly IMapper _mapper;
         private readonly ILogger<FeedbackService> _logger;
 
-        public FeedbackService(IFeedbackRepository feedBackRepository, IFoodItemRepository foodItemRepository, IMapper mapper, IOrderItemRepository orderItemRepository, ILogger<FeedbackService> logger)
+        public FeedbackService(IFeedbackRepository feedBackRepository, IFoodItemRepository foodItemRepository, IMapper mapper, IOrderItemRepository orderItemRepository, ILogger<FeedbackService> logger, INotificationService notificationService)
         {
             _feedBackRepository = feedBackRepository;
             _foodItemRepository = foodItemRepository;
             _mapper = mapper;
             _orderItemRepository = orderItemRepository;
             _logger = logger;
+            _notificationService = notificationService;
         }
 
         public async Task<ServerResponse> AddFeedback(FeedbackDTO feedback)
@@ -42,8 +45,8 @@ namespace RecommendationEngineServer.Services
                 }
 
                 FoodItem item = await _foodItemRepository.GetByItemName(feedback.ItemName);
-                
-                if(item == null)
+
+                if (item == null)
                 {
                     _logger.LogInformation($"userId: {feedback.UserId}, message: This item name doesn't exist., Date: {DateTime.Now}");
                     throw new Exception("This item name doesn't exist.");
@@ -58,7 +61,7 @@ namespace RecommendationEngineServer.Services
                     int feedbackId = await _feedBackRepository.Add(newfeedback);
 
                     response.Name = "AddFeedback";
-                    response.Value = (feedbackId > 0) ? "Thank you for you feedback." : "Adding Feedback failed.";
+                    response.Value = (feedbackId > 0) ? "Thank you for your feedback." : "Adding Feedback failed.";
 
                     _logger.LogInformation($"userId: {feedback.UserId}, message: Feedback Added, Date: {DateTime.Now}");
                 }
@@ -77,11 +80,11 @@ namespace RecommendationEngineServer.Services
             return response;
         }
 
-        public async Task<ServerResponse> GetFeedbacks(string itemName = null)  
+        public async Task<ServerResponse> GetFeedbacks(string itemName = null)
         {
             ServerResponse response = new ServerResponse();
             _logger.LogInformation($"message: GetFeedbacks called by userId: {UserData.UserId}, Date: {DateTime.Now}");
-            
+
             try
             {
                 FoodItem item = await _foodItemRepository.GetByItemName(itemName) ?? throw new Exception("This item name does not exist.");
@@ -112,9 +115,79 @@ namespace RecommendationEngineServer.Services
             return response;
         }
 
+        public async Task<ServerResponse> GetDetailedFeedback(string itemName)
+        {
+            ServerResponse serverResponse = new ServerResponse();
+            _logger.LogInformation($"Get detailed feedback method called by userId: {UserData.UserId}, DateTime: {DateTime.Now}");
+
+            try
+            {
+                Expression<Func<Feedback, bool>> predicate = f => f.FoodItem.ItemName == itemName && f.Comment.ToLower().Contains("detailedfb");
+                List<Feedback> feedbacks = (await _feedBackRepository.GetList(predicate: predicate)).ToList();
+
+                if (feedbacks.IsNullOrEmpty())
+                {
+                    _logger.LogInformation("No feedbacks are given.");
+                    return ResponseHelper.CreateResponse("Feedback", "No feedbacks are given.");
+                }
+
+
+                List<FeedbackDTO> feedbackList = feedbacks.Select(f => new FeedbackDTO
+                {
+                    ItemName = f.FoodItem.ItemName,
+                    Rating = f.Rating,
+                    Comment = f.Comment,
+                    FeedbackDate = f.FeedbackDate
+                }).ToList();
+
+                serverResponse = ResponseHelper.CreateResponse("Feedback", JsonSerializer.Serialize(feedbackList));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"message: {ex.Message}, DateTime: {DateTime.Now}");
+                serverResponse = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
+            }
+
+            return serverResponse;
+        }
+
+        public async Task<ServerResponse> NotifyEmployeesForFeedback(string itemName)
+        {
+            ServerResponse response = new ServerResponse();
+            _logger.LogInformation($"message: NotifyEmployeesForFeedback called by userId: {UserData.UserId} for item: {itemName}, Date: {DateTime.Now}");
+
+            try
+            {
+                Notification newNotification = new Notification
+                {
+                    Message = $"We are trying to improve your experience with {itemName}. Please provide your feedback and \r\nhelp us.",
+                    UserId = UserData.UserId,
+                    IsDelivered = false
+                };
+
+                int notificationId = await _notificationService.AddNotification(newNotification);
+
+                if(notificationId > 0)
+                {
+                    response = ResponseHelper.CreateResponse("NotifyEmployeesforFeedback", "added notification successfully.");
+                }
+                else
+                {
+                    response = ResponseHelper.CreateResponse("NotifyEmployeesforFeedback", "adding notification failed.");
+                }
+            }
+            catch (Exception ex)
+            {
+                response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
+                _logger.LogError($"message: {ex.Message}, Date: {DateTime.Now}");
+            }
+
+            return response;
+        }
+
         private async Task<bool> HasUserOrderedItem(int userId, int foodItemId)
         {
-            return await _orderItemRepository.OrderItemExists(oi =>oi.Order.UserId == userId && oi.RecommendedMenu.FoodItemId == foodItemId);
+            return await _orderItemRepository.OrderItemExists(oi => oi.Order.UserId == userId && oi.RecommendedMenu.FoodItemId == foodItemId);
         }
     }
 }

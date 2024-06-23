@@ -261,6 +261,79 @@ namespace RecommendationEngineServer.Services
             return serverResponse;
         } 
 
+        public async Task<ServerResponse> GetDiscardFoodItemList()
+        {
+            ServerResponse serverResponse = new ServerResponse();
+            _logger.LogInformation($"Getdiscardfooditem list method called by userId: {UserData.UserId}, DateTime: {DateTime.Now}");
+            
+            try
+            {
+                List<FoodItem> foodItems = (await _foodItemRepository.GetList()).ToList();
+
+                DateTime currentDate = DateTime.Now;
+
+                List<Feedback> feedbacks = (await _feedbackRepository.GetList(predicate: f => f.FeedbackDate.Month == currentDate.Month && f.FeedbackDate.Year == currentDate.Year)).ToList();
+
+                List<DiscardItemDTO> discardItems = foodItems.Select(f =>
+                {
+                    List<Feedback> itemFeedbacks = feedbacks.Where(feedback => feedback.FoodItemId == f.FoodItemId).ToList();
+                    double averageRating = itemFeedbacks.Any() ? Math.Round(itemFeedbacks.Average(feedback => feedback.Rating), 2) : 0;
+
+                    return new DiscardItemDTO
+                    {
+                        ItemName = f.ItemName,
+                        AverageRating = averageRating
+                    };
+                }).ToList();
+
+                discardItems = discardItems.Where(d => d.AverageRating <= 2).ToList();
+                serverResponse = ResponseHelper.CreateResponse("DiscardItemList", JsonSerializer.Serialize(discardItems));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"message: {ex.Message}, DateTime: {DateTime.Now}");
+                serverResponse = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
+            }
+
+            return serverResponse;
+        }
+
+        public async Task<ServerResponse> DeleteDiscardMenu(string itemName)
+        {
+            var response = await this.GetDiscardFoodItemList();
+            if (response.Name == "Error")
+            {
+                return response;
+            }
+
+            List<DiscardItemDTO> discardItems;
+            try
+            {
+                string jsonString = response.Value as string;
+
+                if (jsonString == null)
+                {
+                    _logger.LogError($"Expected response value to be a JSON string but got null, DateTime: {DateTime.Now}");
+                    return ResponseHelper.CreateResponse("Error", "Invalid response value.");
+                }
+
+                discardItems = JsonSerializer.Deserialize<List<DiscardItemDTO>>(jsonString);
+            }
+            catch (JsonException jsonEx)
+            {
+                _logger.LogError($"Error deserializing discard items: {jsonEx.Message}, DateTime: {DateTime.Now}");
+                return ResponseHelper.CreateResponse("Error", "Failed to parse discard items.");
+            }
+
+            DiscardItemDTO discardItem = discardItems.FirstOrDefault(d => d.ItemName == itemName);
+            if (discardItem == null)
+            {
+                return ResponseHelper.CreateResponse("Error", "Item not found in the discard list.");
+            }
+
+            return await this.Delete(itemName);
+        }
+
         private static FoodItemDTO UpdateItemFields(FoodItem oldItem, FoodItemDTO itemDto, string availability)
         {
             itemDto.FoodItemId = oldItem.FoodItemId;

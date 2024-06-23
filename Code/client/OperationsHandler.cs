@@ -1,4 +1,5 @@
 ﻿using RecommendationEngineClient.Models;
+using System;
 
 namespace RecommendationEngineClient
 {
@@ -7,6 +8,7 @@ namespace RecommendationEngineClient
         private bool _isLogoutRequested = false;
         private bool _isUserLoggedIn = false;
         private bool _welcomeMessageShown = false;
+        private bool _isDiscardMenuRequested = false;
 
         public async Task DisplayOperations()
         {
@@ -19,6 +21,13 @@ namespace RecommendationEngineClient
 
                 ShowWelcomeMessage();
                 _isLogoutRequested = false;
+
+                if(_isDiscardMenuRequested)
+                {
+                    
+
+                    await HandleDiscardMenuRequest();
+                }
 
                 while (!_isLogoutRequested && _isUserLoggedIn)
                 {
@@ -35,6 +44,10 @@ namespace RecommendationEngineClient
                             _isLogoutRequested = true;
                             _isUserLoggedIn = false;
                             _welcomeMessageShown = false;
+                        }
+                        if(command.ToLower().Contains("discard"))
+                        {
+                            _isDiscardMenuRequested = true;
                         }
 
                         ResponseHandler.HandleResponse(response);
@@ -117,6 +130,9 @@ namespace RecommendationEngineClient
             Console.WriteLine("4. Delete Menu Item");
             Console.WriteLine("5. Get Monthly Food report");
             Console.WriteLine("6. Get Feedbacks");
+            Console.WriteLine("7. Get Discard Menu List");
+            Console.WriteLine("8. Discard food item");
+            Console.WriteLine("9. Get detailed feedback for the item");
             Console.WriteLine("Logout");
             Console.WriteLine("Enter the operation you want to perform:");
         }
@@ -130,6 +146,9 @@ namespace RecommendationEngineClient
             Console.WriteLine("5. Get available Menu Items");
             Console.WriteLine("6. Get Orders for a particular date.");
             Console.WriteLine("7. Get Monthly Food report");
+            Console.WriteLine("8. Get Discard Menu List");
+            Console.WriteLine("9. Discard food item");
+            Console.WriteLine("10. Get detailed feedback for the item");
             Console.WriteLine("Logout");
             Console.WriteLine("Enter the operation you want to perform:");
         }
@@ -139,6 +158,7 @@ namespace RecommendationEngineClient
             Console.WriteLine("1. Get Recommended Items");
             Console.WriteLine("2. Add Feedback");
             Console.WriteLine("3. Order Food");
+            Console.WriteLine("4. Provide detailed feedback for the item");
             Console.WriteLine("Logout");
             Console.WriteLine("Enter the operation you want to perform:");
         }
@@ -164,6 +184,49 @@ namespace RecommendationEngineClient
                 }
 
                 _welcomeMessageShown = true;
+            }
+        }
+
+        private async Task HandleDiscardMenuRequest()
+        {
+            string? discardMenuOption = null;
+            string? discardMenuRequest = null;
+
+            while (!string.IsNullOrEmpty(discardMenuOption))
+            {
+                Console.WriteLine("1. Remove the Food Item from Menu List ");
+                Console.WriteLine("2. Get detailed feedback.");
+                discardMenuOption = Console.ReadLine()?.ToLower().Trim();
+            }
+
+            switch(discardMenuOption.ToLower())
+            {
+                case "1":
+                case "remove the food item from menu list":
+                    discardMenuRequest = ServerRequestBuilder.BuildRequest("discardmenurequest");
+                    break;
+                case "2":
+                case "get detailed feedback":
+                    discardMenuRequest = ServerRequestBuilder.BuildRequest("getdetailedfeedback");
+                    break;
+                default:
+                    Console.WriteLine("Invalid option. Please try again.");
+                    break;
+            }
+
+            if (!string.IsNullOrEmpty(discardMenuRequest))
+            {
+                ServerResponse discardMenuResponse = ServerCommunicator.SendRequestToServer(discardMenuRequest);
+                ResponseHandler.HandleResponse(discardMenuResponse);
+
+                //if (!discardMenuResponse.Value.ToString().Contains("failed", StringComparison.OrdinalIgnoreCase))
+                //{
+                //    Console.WriteLine("Menu discarded successfully.");
+                //}
+                //else
+                //{
+                //    Console.WriteLine("Menu discard failed. Please try again.");
+                //}
             }
         }
     }

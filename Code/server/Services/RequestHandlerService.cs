@@ -58,6 +58,16 @@ namespace RecommendationEngineServer.Services
                     return await HandleGetOrdersRequest(request, parts);
                 case "getfoodreport":
                     return await HandleGetReportRequest(request, parts);
+                case "getdiscardmenulist":
+                    return await HandleGetDiscardMenuListRequest(request, parts);
+                case "getdetailedfeedback":
+                    return await HandleGetDetailedFeedbackRequest(request, parts);
+                case "discardmenu":
+                    return await HandleDeleteDiscardMenuRequest(request, parts);
+                case "notifyemployees":
+                    return await HandleNotifyEmployeesRequest(request, parts);
+                case "providedetailedfeedback":
+                    return await HandleProvideDetailedFeedbackRequest(request, parts);
                 case "logout":
                     return await HandleLogoutRequest(request, parts);  
                 default:
@@ -312,8 +322,63 @@ namespace RecommendationEngineServer.Services
 
             return await _foodItemService.GetFoodItemWithFeedbackReport(month, year);
         }
+
+        private async Task<ServerResponse> HandleGetDiscardMenuListRequest(string request, string[] parts)
+        {
+            return await _foodItemService.GetDiscardFoodItemList();
+        }
+
+        private async Task<ServerResponse> HandleGetDetailedFeedbackRequest(string request, string[] parts)
+        {
+            string itemName = parts[1];
+            return await _feedbackService.GetDetailedFeedback(itemName);
+        }
+
+        private async Task<ServerResponse> HandleDeleteDiscardMenuRequest(string request, string[] parts)
+        {
+            if (parts.Length < 2)
+            {
+                return ResponseHelper.CreateResponse("Error", "Invalid DiscardMenu command. Usage: DiscardMenu <ItemName>");
+            }
+
+            string itemName = parts[1];
+            Console.WriteLine($"Processing discard menu command: ItemName={itemName}");
+
+            return await _foodItemService.DeleteDiscardMenu(itemName);
+        }
+
+        private async Task<ServerResponse> HandleNotifyEmployeesRequest(string request, string[] parts)
+        {
+            if (parts.Length < 2)
+            {
+                return ResponseHelper.CreateResponse("Error", "Invalid NotifyEmployees command. Usage: NotifyEmployees <itemName>");
+            }
+
+            string itemName = parts[1];
+            Console.WriteLine($"Processing notify employees command for {itemName}");
+
+            return await _feedbackService.NotifyEmployeesForFeedback(itemName);
+        }
+
+        private async Task<ServerResponse> HandleProvideDetailedFeedbackRequest(string request, string[] parts)
+        {
+            if (parts.Length < 2)
+            {
+                return ResponseHelper.CreateResponse("Error", "Invalid ProvideDetailedFeedback command. Usage: ProvideDetailedFeedback <feedback details>");
+            }
+
+            try
+            {
+                FeedbackDTO feedback = JsonSerializer.Deserialize<FeedbackDTO>(parts[1]);
+                Console.WriteLine($"Processing provide detailed feedback command");
+
+                return await _feedbackService.AddFeedback(feedback);
+            }
+            catch (JsonException)
+            {
+                return ResponseHelper.CreateResponse("Error", "Invalid feedback info");
+            }
+        }
     }
-
-
 }
 
