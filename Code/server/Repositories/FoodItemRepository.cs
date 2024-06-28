@@ -43,10 +43,5 @@ namespace RecommendationEngineServer.Repositories
                 throw new Exception("Error updating food item", ex);
             }
         }
-
-        public async Task<bool> HasAssociatedOrders(int foodItemId)
-        {
-            return _context.OrderItems.Any(m => m.RecommendedMenu.FoodItemId == foodItemId);
-        }
     }
 }

@@ -122,25 +122,19 @@ namespace RecommendationEngineServer.Services
 
             try
             {
-                Expression<Func<Feedback, bool>> predicate = f => f.FoodItem.ItemName == itemName && f.Comment.ToLower().Contains("detailedfb");
+                Expression<Func<Feedback, bool>> predicate = f => f.FoodItem.ItemName == itemName && f.Comment.ToLower().Contains("detailedfb") && f.Rating == null;
                 List<Feedback> feedbacks = (await _feedBackRepository.GetList(predicate: predicate)).ToList();
 
                 if (feedbacks.IsNullOrEmpty())
                 {
                     _logger.LogInformation("No feedbacks are given.");
-                    return ResponseHelper.CreateResponse("Feedback", "No feedbacks are given.");
+                    return ResponseHelper.CreateResponse("DetailedFeedback", "No feedbacks are given.");
                 }
 
 
-                List<FeedbackDTO> feedbackList = feedbacks.Select(f => new FeedbackDTO
-                {
-                    ItemName = f.FoodItem.ItemName,
-                    Rating = f.Rating,
-                    Comment = f.Comment,
-                    FeedbackDate = f.FeedbackDate
-                }).ToList();
+                List<string> feedbackList = feedbacks.Select(f => f.Comment).ToList();
 
-                serverResponse = ResponseHelper.CreateResponse("Feedback", JsonSerializer.Serialize(feedbackList));
+                serverResponse = ResponseHelper.CreateResponse("DetailedFeedback", JsonSerializer.Serialize(feedbackList));
             }
             catch (Exception ex)
             {
@@ -160,7 +154,7 @@ namespace RecommendationEngineServer.Services
             {
                 Notification newNotification = new Notification
                 {
-                    Message = $"We are trying to improve your experience with {itemName}. Please provide your feedback and \r\nhelp us.",
+                    Message = $"We are trying to improve your experience with the dish {itemName}. Please provide your feedback and help us.",
                     UserId = UserData.UserId,
                     IsDelivered = false
                 };

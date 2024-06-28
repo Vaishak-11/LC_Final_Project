@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RecommendationEngineServer.Context;
 
@@ -11,9 +12,10 @@ using RecommendationEngineServer.Context;
 namespace RecommendationEngineServer.Migrations
 {
     [DbContext(typeof(ServerDbContext))]
-    partial class ServerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240626141720_second-Context")]
+    partial class secondContext
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -318,7 +320,7 @@ namespace RecommendationEngineServer.Migrations
             modelBuilder.Entity("RecommendationEngineServer.Models.Entities.OrderItem", b =>
                 {
                     b.HasOne("RecommendationEngineServer.Models.Entities.RecommendedMenu", "RecommendedMenu")
-                        .WithMany("OrderItems")
+                        .WithMany()
                         .HasForeignKey("MenuId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -326,7 +328,7 @@ namespace RecommendationEngineServer.Migrations
                     b.HasOne("RecommendationEngineServer.Models.Entities.Order", "Order")
                         .WithMany()
                         .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Order");
@@ -369,11 +371,6 @@ namespace RecommendationEngineServer.Migrations
                     b.Navigation("Feedbacks");
 
                     b.Navigation("RecommendedMenus");
-                });
-
-            modelBuilder.Entity("RecommendationEngineServer.Models.Entities.RecommendedMenu", b =>
-                {
-                    b.Navigation("OrderItems");
                 });
 #pragma warning restore 612, 618
         }

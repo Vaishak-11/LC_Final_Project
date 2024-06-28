@@ -10,95 +10,31 @@ namespace RecommendationEngineClient
         private bool _welcomeMessageShown = false;
         private bool _isDiscardMenuRequested = false;
 
+        private readonly AuthenticationHandler _authenticationHandler = new();
+        private readonly DiscardMenuHandler _menuHandler = new();
+
         public async Task DisplayOperations()
         {
             while (true)
             {
-                while (!_isUserLoggedIn)
-                {
-                    await HandleLoginorRegister();
-                }
+                _isUserLoggedIn = await _authenticationHandler.HandleLoginOrRegister();
+
+                if (!_isUserLoggedIn)
+                    continue;
 
                 ShowWelcomeMessage();
                 _isLogoutRequested = false;
 
                 if(_isDiscardMenuRequested)
                 {
-                    
-
-                    await HandleDiscardMenuRequest();
+                    await _menuHandler.HandleDiscardMenuRequest();
                 }
 
                 while (!_isLogoutRequested && _isUserLoggedIn)
                 {
                     await DisplayRoleBasedOperations();
 
-                    string command = Console.ReadLine();
-
-                    string request = ServerRequestBuilder.BuildRequest(command);
-                    if (request != null)
-                    {
-                        ServerResponse response = ServerCommunicator.SendRequestToServer(request);
-                        if (command.ToLower() == "logout")
-                        {
-                            _isLogoutRequested = true;
-                            _isUserLoggedIn = false;
-                            _welcomeMessageShown = false;
-                        }
-                        if(command.ToLower().Contains("discard"))
-                        {
-                            _isDiscardMenuRequested = true;
-                        }
-
-                        ResponseHandler.HandleResponse(response);
-                    }
-                }
-            }
-        }
-
-        private async Task HandleLoginorRegister()
-        {
-            Console.WriteLine("Please register/ login first. Enter 'a' for login 'b' for creating account");
-            string? loginOption = Console.ReadLine()?.ToLower().Trim();
-            string? loginCommand;
-
-            switch (loginOption)
-            {
-                case "a":
-                    loginCommand = "login";
-                    break;
-
-                case "b":
-                    loginCommand = "register";
-                    break;
-
-                default:
-                    Console.WriteLine("Invalid option. Please try again.");
-                    return;
-            }
-
-            string loginRequest = ServerRequestBuilder.BuildRequest(loginCommand);
-            if (loginRequest != null)
-            {
-                ServerResponse loginResponse = ServerCommunicator.SendRequestToServer(loginRequest);
-                ResponseHandler.HandleResponse(loginResponse);
-
-                if (!loginResponse.Value.ToString().Contains("failed", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (loginCommand == "login")
-                    {
-                        UserData.UserId = loginResponse.UserId;
-                        UserData.RoleId = loginResponse.RoleId;
-                        _isUserLoggedIn = true;
-                    }
-                    else if (loginCommand == "register")
-                    {
-                        Console.WriteLine("Registration successful. Please log in.");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"{loginCommand} failed. Please try again.");
+                    await HandleUserCommand();
                 }
             }
         }
@@ -187,47 +123,28 @@ namespace RecommendationEngineClient
             }
         }
 
-        private async Task HandleDiscardMenuRequest()
+        private async Task HandleUserCommand()
         {
-            string? discardMenuOption = null;
-            string? discardMenuRequest = null;
+            string command = Console.ReadLine();
 
-            while (!string.IsNullOrEmpty(discardMenuOption))
+            string request = ServerRequestBuilder.BuildRequest(command);
+
+            if (request != null)
             {
-                Console.WriteLine("1. Remove the Food Item from Menu List ");
-                Console.WriteLine("2. Get detailed feedback.");
-                discardMenuOption = Console.ReadLine()?.ToLower().Trim();
-            }
+                ServerResponse response = ServerCommunicator.SendRequestToServer(request);
+                if (command.ToLower() == "logout")
+                {
+                    _isLogoutRequested = true;
+                    _isUserLoggedIn = false;
+                    _welcomeMessageShown = false;
+                }
+                if (command.ToLower().Contains("discard"))
+                {
+                    _isDiscardMenuRequested = true;
+                }
 
-            switch(discardMenuOption.ToLower())
-            {
-                case "1":
-                case "remove the food item from menu list":
-                    discardMenuRequest = ServerRequestBuilder.BuildRequest("discardmenurequest");
-                    break;
-                case "2":
-                case "get detailed feedback":
-                    discardMenuRequest = ServerRequestBuilder.BuildRequest("getdetailedfeedback");
-                    break;
-                default:
-                    Console.WriteLine("Invalid option. Please try again.");
-                    break;
+                ResponseHandler.HandleResponse(response);
             }
-
-            if (!string.IsNullOrEmpty(discardMenuRequest))
-            {
-                ServerResponse discardMenuResponse = ServerCommunicator.SendRequestToServer(discardMenuRequest);
-                ResponseHandler.HandleResponse(discardMenuResponse);
-
-                //if (!discardMenuResponse.Value.ToString().Contains("failed", StringComparison.OrdinalIgnoreCase))
-                //{
-                //    Console.WriteLine("Menu discarded successfully.");
-                //}
-                //else
-                //{
-                //    Console.WriteLine("Menu discard failed. Please try again.");
-                //}
-            }
-        }
+        }  
     }
 }

@@ -53,6 +53,12 @@ namespace RecommendationEngineServer.Context
                 .WithMany()
                 .HasForeignKey(f => f.FoodItemId);
 
+            modelBuilder.Entity<RecommendedMenu>()
+                .HasMany(rm => rm.OrderItems)
+                .WithOne(rm => rm.RecommendedMenu)
+                .HasForeignKey(rm => rm.MenuId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<Order>()
                .HasOne(v => v.User)
                .WithMany()
@@ -60,14 +66,15 @@ namespace RecommendationEngineServer.Context
 
             modelBuilder.Entity<OrderItem>()
                 .HasOne(v => v.RecommendedMenu)
-                .WithMany()
+                .WithMany(rm => rm.OrderItems)
                 .HasForeignKey(v => v.MenuId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<OrderItem>()
                 .HasOne(v => v.Order)
                 .WithMany()
-                .HasForeignKey(v => v.OrderId);
+                .HasForeignKey(v => v.OrderId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Employee>()
                .HasOne(v => v.User)
@@ -78,6 +85,18 @@ namespace RecommendationEngineServer.Context
                .HasOne(v => v.User)
                .WithMany()
                .HasForeignKey(v => v.UserId);
+
+            modelBuilder.Entity<FoodItem>()
+                .HasMany<Feedback>(f => f.Feedbacks)
+                .WithOne(f => f.FoodItem)
+                .HasForeignKey(f => f.FoodItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FoodItem>()
+                .HasMany<RecommendedMenu>(rm => rm.RecommendedMenus)
+                .WithOne(rm => rm.FoodItem)
+                .HasForeignKey(rm => rm.FoodItemId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

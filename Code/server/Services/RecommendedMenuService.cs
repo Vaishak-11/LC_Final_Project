@@ -121,7 +121,7 @@ namespace RecommendationEngineServer.Services
                     if (item != null)
                     {
                         var feedbacks = await _feedbackRepository.GetList(f => f.FoodItemId == item.FoodItemId);
-                        double averageRating = feedbacks.Any() ? feedbacks.Average(f => f.Rating) : 0;
+                        double averageRating = (double)(feedbacks.Any() ? feedbacks.Average(f => f.Rating) : 0);
                         List<string> comments = feedbacks.Any() ? feedbacks.Select(f => f.Comment).ToList() : new List<string>();
                         string overallRating = await SentimentAnlysisHelper.AnalyzeSentiments(comments, averageRating);
                         List<string> selectedComments = await SelectComments(comments, overallRating);

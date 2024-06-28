@@ -96,7 +96,7 @@ namespace RecommendationEngineServer.Services
                 var itemTasks = itemList.Select(async foodItem =>
                 {
                     var feedbacks = feedbackList.Where(f => f.FoodItemId == foodItem.FoodItemId).ToList();
-                    var averageRating = feedbacks.Any() ? Math.Round(feedbacks.Average(f => f.Rating), 2) : 0;
+                    var averageRating = feedbacks.Any() ? Math.Round((double)feedbacks.Average(f => f.Rating), 2) : 0;
                     var comments = feedbacks.Any() ? feedbacks.Select(f => f.Comment).ToList() : new List<string>();
                     var overallRating = await SentimentAnlysisHelper.AnalyzeSentiments(comments, averageRating);
 
@@ -185,16 +185,8 @@ namespace RecommendationEngineServer.Services
             try
             {
                 FoodItem item = await _foodItemRepository.GetByItemName(itemName) ?? throw new Exception("Item not found.");
-                bool hasAssociatedOrders = await _foodItemRepository.HasAssociatedOrders(item.FoodItemId);
-                if (hasAssociatedOrders)
-                {
-                    await _foodItemRepository.Delete(item.FoodItemId);
-                }
-                else
-                {
-                    item.IsAvailable = false;
-                    await _foodItemRepository.Update(item);
-                }
+
+                await _foodItemRepository.Delete(item.FoodItemId);
 
                 response  = ResponseHelper.CreateResponse("Delete", "Deleted successfully");
                 _logger.LogInformation($"Item {item.ItemName} deleted successfully");
@@ -239,7 +231,7 @@ namespace RecommendationEngineServer.Services
                 List<FoodReportDTO> foodItemWithFeedbacks = foodItems.Select(f =>
                 {
                     List<Feedback> itemFeedbacks = feedbacks.Where(feedback => feedback.FoodItemId == f.FoodItemId).ToList();
-                    double averageRating = itemFeedbacks.Any() ? Math.Round(itemFeedbacks.Average(feedback => feedback.Rating), 2) : 0;
+                    double averageRating = itemFeedbacks.Any() ? Math.Round((double)itemFeedbacks.Average(feedback => feedback.Rating), 2) : 0;
                     List<string> comments = itemFeedbacks.Select(feedback => feedback.Comment).ToList();
 
                     return new FoodReportDTO
@@ -277,7 +269,7 @@ namespace RecommendationEngineServer.Services
                 List<DiscardItemDTO> discardItems = foodItems.Select(f =>
                 {
                     List<Feedback> itemFeedbacks = feedbacks.Where(feedback => feedback.FoodItemId == f.FoodItemId).ToList();
-                    double averageRating = itemFeedbacks.Any() ? Math.Round(itemFeedbacks.Average(feedback => feedback.Rating), 2) : 0;
+                    double averageRating = itemFeedbacks.Any() ? Math.Round((double)itemFeedbacks.Average(feedback => feedback.Rating), 2) : 0;
 
                     return new DiscardItemDTO
                     {

@@ -175,7 +175,7 @@ namespace RecommendationEngineServer.Services
                             UserData.NotificationDeliverStatus[notification.NotificationId] = new List<NotificationStatus>();
                         }
 
-                        if (notification.Message.Contains("item") || notification.Message.Contains("recommended menu"))
+                        if (notification.Message.Contains("item") || notification.Message.Contains("dish") || notification.Message.Contains("recommended menu"))
                         {
                             predicate = u => u.Role.RoleName.ToLower() == "employee";
                         }

@@ -1,16 +1,14 @@
 ﻿using RecommendationEngineServer.Models.Enums;
-using System.ComponentModel.DataAnnotations;
 
 namespace RecommendationEngineServer.Models.Entities
 {
-    public class RecommendedMenu
+    public class Recommendation
     {
-        [Key]
-        public int MenuId { get; set; }
+        public int RecommendationId { get; set; }
 
         public int UserId { get; set; }
 
-        public int FoodItemId { get; set; }
+        public int MenuId { get; set; }
 
         public FoodCategory Category { get; set; }
 
@@ -20,8 +18,6 @@ namespace RecommendationEngineServer.Models.Entities
 
         public virtual User User { get; set; }
 
-        public virtual FoodItem FoodItem { get; set; }
-
-        public virtual ICollection<OrderItem> OrderItems { get; set; }
+        public virtual FoodItem Menu { get; set; }
     }
 }

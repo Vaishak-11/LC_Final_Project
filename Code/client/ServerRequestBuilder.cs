@@ -636,9 +636,14 @@ namespace RecommendationEngineClient
 
         private static string BuildDiscardMenuRequest()
         {
-            Console.Write("Enter the name of the item you want to remove from the menu list: ");
-            string itemName = Console.ReadLine();
+            string itemName = null;
 
+            while (string.IsNullOrEmpty(itemName))
+            {
+                Console.Write("Enter the name of the item you want to remove from the menu list: ");
+                itemName = Console.ReadLine();
+            }
+   
             return $"discardmenu#{itemName}";
         }
 
@@ -670,10 +675,12 @@ namespace RecommendationEngineClient
 
         private static string BuildProvideDetailedFeedbackRequest()
         {
-              FeedbackDTO feedbackDTO = new FeedbackDTO();
+            FeedbackDTO feedbackDTO = new FeedbackDTO();
             feedbackDTO.UserId = UserData.UserId;
             feedbackDTO.FeedbackDate = DateTime.Now;
-            feedbackDTO.Rating = 0;
+            feedbackDTO.Rating = null;
+            feedbackDTO.Comment = "detailedfb";
+            string comment = null;
 
             while (string.IsNullOrWhiteSpace(feedbackDTO.ItemName))
             {
@@ -681,20 +688,22 @@ namespace RecommendationEngineClient
                 feedbackDTO.ItemName = Console.ReadLine();
             }
             
-            while (string.IsNullOrWhiteSpace(feedbackDTO.Comment))
+            while (string.IsNullOrWhiteSpace(comment))
             {
                 Console.WriteLine($"What didn’t you like about {feedbackDTO.ItemName}?: ");
-                feedbackDTO.Comment = Console.ReadLine();
+                comment += "  1." + Console.ReadLine();
 
                 Console.WriteLine($"How would you like {feedbackDTO.ItemName} to taste? ");
-                feedbackDTO.Comment += " " + Console.ReadLine();
+                comment += "  2." + Console.ReadLine();
 
                 Console.WriteLine($"What would you like to be improved in the dish? ");
-                feedbackDTO.Comment += " " + Console.ReadLine();
+                comment += "  3." + Console.ReadLine();
 
                 Console.WriteLine($"Share your mom’s recipe");
-                feedbackDTO.Comment += " " + Console.ReadLine();
+                comment += "  4." + Console.ReadLine();
             }
+
+            feedbackDTO.Comment += comment;
 
             string feedbackJson = JsonSerializer.Serialize(feedbackDTO);
             return $"providedetailedfeedback#{feedbackJson}";   

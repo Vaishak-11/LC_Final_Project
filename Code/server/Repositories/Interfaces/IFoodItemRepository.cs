@@ -10,7 +10,5 @@ namespace RecommendationEngineServer.Repositories.Interfaces
         Task<List<FoodItem>> GetByItemNames(List<string> itemNames);
 
         Task Update(FoodItem entity);
-
-        Task<bool> HasAssociatedOrders(int foodItemId);
     }
 }
