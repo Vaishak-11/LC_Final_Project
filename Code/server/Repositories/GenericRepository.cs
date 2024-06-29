@@ -1,9 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RecommendationEngineServer.Context;
 using RecommendationEngineServer.Repositories.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
-using System.Reflection;
 
 namespace RecommendationEngineServer.Repositories
 {
@@ -21,10 +19,12 @@ namespace RecommendationEngineServer.Repositories
         public async Task<IEnumerable<T>> GetList(Expression<Func<T,bool>> predicate = null)
         {
             var query = _table.AsQueryable();
+
             if(predicate != null)
             {
                 query = query.Where(predicate);
             }
+
             return await query.ToListAsync();
         }
 

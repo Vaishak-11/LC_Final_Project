@@ -8,5 +8,7 @@ namespace RecommendationEngineServer.Services.Interfaces
         Task<ServerResponse> RegisterUser(UserLoginDTO user);
 
         Task<ServerResponse> Logout(int userId);
+
+        Task<ServerResponse> UpdateProfile(EmployeeProfileDTO profile);
     }
 }

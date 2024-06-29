@@ -53,8 +53,8 @@ namespace RecommendationEngineServer.Services
 
                 if (userId > 0)
                 {
-                    List<Notification> pendingNotifications = roleId != 1 ?await GetPendingNotifications(userId) : new List<Notification>();
-                    
+                    List<Notification> pendingNotifications = roleId != 1 ? await GetPendingNotifications(userId) : new List<Notification>();
+
                     var loginResponse = new LoginResponse
                     {
                         Message = loginMessage,
@@ -100,9 +100,9 @@ namespace RecommendationEngineServer.Services
                     throw new Exception("Registration failed. This username already exists. Try with a different userName");
                 }
 
-                User user = new User { UserName = userRegister.UserName, Password = userRegister.Password,  RoleId= roleDetails.RoleId };
-                int userId = await _userRepository.Add(user);   
-                
+                User user = new User { UserName = userRegister.UserName, Password = userRegister.Password, RoleId = roleDetails.RoleId };
+                int userId = await _userRepository.Add(user);
+
                 if (userRegister.Role.ToLower() == "employee")
                 {
                     Employee newEmployee = new Employee { EmployeeCode = userRegister.EmployeeCode, UserId = userId };
@@ -136,6 +136,38 @@ namespace RecommendationEngineServer.Services
             _logger.LogInformation($"userId: {userId}, message: Logout successful., Date: {DateTime.Now}");
 
             return ResponseHelper.CreateResponse("Logout", "Logout successful.");
+        }
+
+        public async Task<ServerResponse> UpdateProfile(EmployeeProfileDTO profile)
+        {
+            ServerResponse response = new ServerResponse();
+
+            try
+            {
+                Employee employee = (await _employeeRepository.GetList(predicate: e => e.UserId == profile.UserId)).FirstOrDefault();
+
+                if (employee == null)
+                {
+                    _logger.LogError($"userId: {profile.UserId}, message: Profile update failed. Employee not found., Date: {DateTime.Now}");
+                    throw new Exception("Profile update failed. Employee not found.");
+                }
+
+                employee.FoodDiet = profile.FoodDiet;
+                employee.SpiceLevel = profile.SpiceLevel;
+                employee.Cuisine = profile.Cuisine;
+
+                await _employeeRepository.Update(employee);
+
+                _logger.LogInformation($"userId: {profile.UserId}, message: Profile updated successfully., Date: {DateTime.Now}");
+                response = ResponseHelper.CreateResponse("Profile", "Profile updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"userId: {profile.UserId}, message: Profile update failed. {ex.Message}, Date: {DateTime.Now}");
+                response = ResponseHelper.CreateResponse("Profile", ex.Message);
+            }
+
+            return response;
         }
 
         private static (string message, int userId, int roleId) ValidateEmployeeLogin(Employee employee, string name, string password)
@@ -214,7 +246,7 @@ namespace RecommendationEngineServer.Services
             {
                 foreach (var notification in pendingNotifications)
                 {
-                    var notificationStatus = UserData.NotificationDeliverStatus[notification.NotificationId].FirstOrDefault(ns => ns.UserId == userId); 
+                    var notificationStatus = UserData.NotificationDeliverStatus[notification.NotificationId].FirstOrDefault(ns => ns.UserId == userId);
                     if (notificationStatus != null)
                     {
                         notificationStatus.IsDelivered = true;

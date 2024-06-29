@@ -95,6 +95,7 @@ namespace RecommendationEngineClient
             Console.WriteLine("2. Add Feedback");
             Console.WriteLine("3. Order Food");
             Console.WriteLine("4. Provide detailed feedback for the item");
+            Console.WriteLine("5. Update Profile");
             Console.WriteLine("Logout");
             Console.WriteLine("Enter the operation you want to perform:");
         }

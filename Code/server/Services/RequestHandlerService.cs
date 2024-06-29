@@ -68,6 +68,8 @@ namespace RecommendationEngineServer.Services
                     return await HandleNotifyEmployeesRequest(request, parts);
                 case "providedetailedfeedback":
                     return await HandleProvideDetailedFeedbackRequest(request, parts);
+                case "updateprofile":
+                    return await HandleUpdateProfileRequest(request, parts);
                 case "logout":
                     return await HandleLogoutRequest(request, parts);  
                 default:
@@ -377,6 +379,26 @@ namespace RecommendationEngineServer.Services
             catch (JsonException)
             {
                 return ResponseHelper.CreateResponse("Error", "Invalid feedback info");
+            }
+        }
+
+        private async Task<ServerResponse> HandleUpdateProfileRequest(string request, string[] parts)
+        {
+            if (parts.Length < 2)
+            {
+                return ResponseHelper.CreateResponse("Error", "Invalid UpdateProfile command. Usage: UpdateProfile <profile details>");
+            }
+
+            try
+            {
+                EmployeeProfileDTO profile = JsonSerializer.Deserialize<EmployeeProfileDTO>(parts[1]);
+                Console.WriteLine($"Processing update profile command");
+
+                return await _userService.UpdateProfile(profile);
+            }
+            catch (JsonException)
+            {
+                return ResponseHelper.CreateResponse("Error", "Invalid profile details");
             }
         }
     }

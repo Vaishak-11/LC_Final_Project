@@ -18,22 +18,24 @@ namespace RecommendationEngineServer.Services
         private readonly IMapper _mapper;
         private readonly IFoodItemRepository _foodItemRepository;
         private readonly IFeedbackRepository _feedbackRepository;
+        private readonly IEmployeeRepository _employeeRepository;
         private readonly ILogger<RecommendedMenuService> _logger;
 
-        public RecommendedMenuService(IRecommendedMenuRepository recommendedMenuRepository, IFoodItemRepository foodItemRepository, IMapper mapper, INotificationService notificationService, IFeedbackRepository feedbackRepository, ILogger<RecommendedMenuService> logger)
+        public RecommendedMenuService(IRecommendedMenuRepository recommendedMenuRepository, IFoodItemRepository foodItemRepository, IMapper mapper, INotificationService notificationService, IFeedbackRepository feedbackRepository, IEmployeeRepository employeeRepository, ILogger<RecommendedMenuService> logger)
         {
             _recommendedMenuRepository = recommendedMenuRepository;
             _foodItemRepository = foodItemRepository;
             _mapper = mapper;
             _notificationService = notificationService;
             _feedbackRepository = feedbackRepository;
+            _employeeRepository = employeeRepository;
             _logger = logger;
         }
 
         public async Task<ServerResponse> AddRecommendedMenu(List<RecommendedMenuDTO> recommendations)
         {
             ServerResponse response = new ServerResponse();
-            _logger.LogInformation($"Adding recommended items {recommendations.Select(r=>r.ItemName)}by {recommendations.First().UserId}");
+            _logger.LogInformation($"Adding recommended items {recommendations.Select(r => r.ItemName)}by {recommendations.First().UserId}");
 
             try
             {
@@ -46,7 +48,6 @@ namespace RecommendationEngineServer.Services
                 List<string> itemNames = recommendations.Select(r => r.ItemName).ToList();
                 List<FoodItem> existingItems = await _foodItemRepository.GetByItemNames(itemNames);
                 List<string> nonexistingItems = itemNames.Except(existingItems.Select(m => m.ItemName)).ToList();
-
 
                 if (nonexistingItems.Any())
                 {
@@ -101,7 +102,8 @@ namespace RecommendationEngineServer.Services
 
             try
             {
-                List<RecommendedMenu> recommendationList = (await _recommendedMenuRepository.GetListByDate(date)).ToList();
+                Employee employee = (await _employeeRepository.GetList(e => e.UserId == UserData.UserId)).FirstOrDefault();
+                List<RecommendedMenu> recommendationList = (await _recommendedMenuRepository.GetListByDate(date, include: nameof(FoodItem))).ToList();
 
                 if (!recommendationList.Any())
                 {
@@ -109,42 +111,15 @@ namespace RecommendationEngineServer.Services
                     return ResponseHelper.CreateResponse("GetRecommendedMenu", "No Menu is added to display.");
                 }
 
-                List<int> itemIds = recommendationList.Select(r => r.FoodItemId).ToList();
-                List<FoodItem> foodItems = (await _foodItemRepository.GetList(f => itemIds.Contains(f.FoodItemId))).ToList();
-
-                List<DisplayRecommendedMenuDTO> displayMenuList = new List<DisplayRecommendedMenuDTO>();
-
-                foreach (var recommendedMenu in recommendationList)
+                if (employee != null)
                 {
-                    FoodItem item = foodItems.FirstOrDefault(f => f.FoodItemId == recommendedMenu.FoodItemId);
-
-                    if (item != null)
-                    {
-                        var feedbacks = await _feedbackRepository.GetList(f => f.FoodItemId == item.FoodItemId);
-                        double averageRating = (double)(feedbacks.Any() ? feedbacks.Average(f => f.Rating) : 0);
-                        List<string> comments = feedbacks.Any() ? feedbacks.Select(f => f.Comment).ToList() : new List<string>();
-                        string overallRating = await SentimentAnlysisHelper.AnalyzeSentiments(comments, averageRating);
-                        List<string> selectedComments = await SelectComments(comments, overallRating);
-
-                        displayMenuList.Add(new DisplayRecommendedMenuDTO
-                        {
-                            ItemName = item.ItemName,
-                            Price = item.Price,
-                            FoodCategory = recommendedMenu.Category,
-                            Rating = averageRating,
-                            Comments = comments,
-                            OverallRating = overallRating
-                        });
-                    }
+                    recommendationList = SortRecommendationsByEmployeePreferences(recommendationList, employee);
                 }
 
-                displayMenuList = displayMenuList
-                            .OrderBy(d => d.FoodCategory)
-                            .ThenByDescending(d => d.OverallRating)
-                            .ToList();
+                response.Value = employee != null? JsonSerializer.Serialize(await CreateDisplayMenuListForEmployee(recommendationList))
+                                        : JsonSerializer.Serialize(await CreateDisplayMenuList(recommendationList));
 
                 response.Name = "recommendedItemsList";
-                response.Value = JsonSerializer.Serialize(displayMenuList);
             }
             catch (Exception ex)
             {
@@ -154,7 +129,6 @@ namespace RecommendationEngineServer.Services
 
             return response;
         }
-
 
         public async Task<ServerResponse> UpdateRecommendedMenu(RecommendedMenuDTO recommendedMenu)
         {
@@ -227,5 +201,97 @@ namespace RecommendationEngineServer.Services
 
             return selectedComments;
         }
+
+        private List<RecommendedMenu> SortRecommendationsByEmployeePreferences(List<RecommendedMenu> recommendationList, Employee employee)
+        {
+            return recommendationList
+                .OrderByDescending(r => GetCuisinePreferenceScore(r, employee))
+                .ThenByDescending(r => GetSpiceLevelPreferenceScore(r, employee))
+                .ThenByDescending(r => GetDietPreferenceScore(r, employee))
+                .ToList();
+        }
+
+        private int GetCuisinePreferenceScore(RecommendedMenu recommendedMenu, Employee employee)
+        {
+            return recommendedMenu.FoodItem != null && recommendedMenu.FoodItem.Cuisine == employee.Cuisine ? 1 : 0;
+        }
+
+        private int GetSpiceLevelPreferenceScore(RecommendedMenu recommendedMenu, Employee employee)
+        {
+            return recommendedMenu.FoodItem != null && recommendedMenu.FoodItem.SpiceLevel == employee.SpiceLevel ? 1 : 0;
+        }
+
+        private int GetDietPreferenceScore(RecommendedMenu recommendedMenu, Employee employee)
+        {
+            return recommendedMenu.FoodItem != null && recommendedMenu.FoodItem.FoodDiet == employee.FoodDiet ? 1 : 0;
+        }
+
+        private async Task<List<DisplayRecommendedMenuDTO>> CreateDisplayMenuList(List<RecommendedMenu> recommendedMenus)
+        {
+            List<DisplayRecommendedMenuDTO> displayMenuList = new();
+
+            foreach (var recommendedMenu in recommendedMenus)
+            {
+                FoodItem item = recommendedMenu.FoodItem;
+
+                if (item != null)
+                {
+                    var feedbacks = await _feedbackRepository.GetList(f => f.FoodItemId == item.FoodItemId);
+                    double averageRating = (double)(feedbacks.Any() ? feedbacks.Average(f => f.Rating) : 0);
+                    List<string> comments = feedbacks.Any() ? feedbacks.Where(f => !f.Comment.ToLower().Contains("detailedfb")).Select(f => f.Comment).ToList() : new List<string>();
+                    string overallRating = await SentimentAnlysisHelper.AnalyzeSentiments(comments, averageRating);
+                    List<string> selectedComments = await SelectComments(comments, overallRating);
+
+                    displayMenuList.Add(new DisplayRecommendedMenuDTO
+                    {
+                        ItemName = item.ItemName,
+                        Price = item.Price,
+                        FoodCategory = recommendedMenu.Category,
+                        Rating = Math.Round(averageRating, 2),
+                        Comments = comments,
+                        OverallRating = overallRating
+                    });
+                }
+            }
+
+            return displayMenuList
+                .OrderBy(d => d.FoodCategory)
+                .ThenByDescending(d => d.OverallRating)
+                .ToList();
+        }
+
+        private async Task<List<DisplayRecommendedMenuForEmployeeDTO>> CreateDisplayMenuListForEmployee(List<RecommendedMenu> recommendedMenus)
+        {
+            List<DisplayRecommendedMenuForEmployeeDTO> displayMenuListForEmployee = new();
+
+            foreach (var recommendedMenu in recommendedMenus)
+            {
+                FoodItem item = recommendedMenu.FoodItem;
+
+                if (item != null)
+                {
+                    var feedbacks = await _feedbackRepository.GetList(f => f.FoodItemId == item.FoodItemId);
+                    double averageRating = (double)(feedbacks.Any() ? feedbacks.Average(f => f.Rating) : 0);
+                    List<string> comments = feedbacks.Any() ? feedbacks.Where(f => !f.Comment.ToLower().Contains("detailedfb")).Select(f => f.Comment).ToList() : new List<string>();
+                    string overallRating = await SentimentAnlysisHelper.AnalyzeSentiments(comments, averageRating);
+                    List<string> selectedComments = await SelectComments(comments, overallRating);
+
+                    displayMenuListForEmployee.Add(new DisplayRecommendedMenuForEmployeeDTO
+                    {
+                        ItemName = item.ItemName,
+                        Price = item.Price,
+                        FoodCategory = recommendedMenu.Category,
+                        Rating = Math.Round(averageRating, 2),
+                        OverallRating = overallRating
+                    });
+                }
+            }
+
+            return displayMenuListForEmployee
+                .OrderBy(d => d.FoodCategory)
+                .ThenByDescending(d => d.OverallRating)
+                .ToList();
+        }
+
     }
 }

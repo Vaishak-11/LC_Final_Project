@@ -117,8 +117,17 @@ namespace RecommendationEngineServer
 
             NetworkStream stream = client.GetStream();
             byte[] buffer = new byte[1024];
-            int bytesRead = stream.Read(buffer, 0, buffer.Length);
-            string request = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+            StringBuilder requestBuilder = new StringBuilder();
+            int bytesRead = 0;
+
+            do
+            {
+                bytesRead = stream.Read(buffer, 0, buffer.Length);
+                requestBuilder.Append(Encoding.ASCII.GetString(buffer, 0, bytesRead));
+            }
+            while (bytesRead > 0 && stream.DataAvailable);
+
+            string request = requestBuilder.ToString();
             Console.WriteLine($"Received request from {client.Client.RemoteEndPoint}: {request}");
             ServerResponse response;
 

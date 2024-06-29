@@ -28,17 +28,18 @@ namespace RecommendationEngineServer.Repositories
             .ToListAsync();
         }
 
-        public async Task<List<RecommendedMenu>> GetListByDate(DateTime? date = null)
+        public async Task<List<RecommendedMenu>> GetListByDate(DateTime? date = null, string include = null)
         {
             if (date.HasValue)
             {
                 return await _context.RecommendedMenus
                     .Where(r => r.RecommendationDate.Date == date.Value.Date)
+                    .Include(include)
                     .ToListAsync();
             }
             else
             {
-                return await _context.RecommendedMenus.ToListAsync();
+                return await _context.RecommendedMenus.Include(include).ToListAsync();
             }
         }
     }

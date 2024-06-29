@@ -106,6 +106,10 @@ namespace RecommendationEngineClient
                 case "4":
                     return BuildProvideDetailedFeedbackRequest();
 
+                case "update profile":
+                case "5":
+                    return BuildUpdateProfileRequest();
+
                 case "logout":
                     return BuildLogoutrequest();
 
@@ -707,7 +711,21 @@ namespace RecommendationEngineClient
 
             string feedbackJson = JsonSerializer.Serialize(feedbackDTO);
             return $"providedetailedfeedback#{feedbackJson}";   
-        } 
+        }
+
+        private static string BuildUpdateProfileRequest()
+        {
+            EmployeeProfileDTO profile = new EmployeeProfileDTO
+            {
+                UserId = UserData.UserId,
+                Cuisine = GetEnumInput<Cuisine>("What is your most preferred cuisine among these? [NorthIndian, SouthIndian, Chinese, Other, NoPreference]: "),
+                FoodDiet = GetEnumInput<FoodDiet>("What is your preferred Diet? [Vegetarian, NonVegetarian, Eggetarian, NoPreference]: "),
+                SpiceLevel = GetEnumInput<SpiceLevel>("What is your preferred Spice Level? [Low, Medium, High]: ")
+            };
+
+            string profileJson = JsonSerializer.Serialize(profile);
+            return $"updateprofile#{profileJson}";
+        }
 
         private static FoodCategory ParseFoodCategory(string input)
         {
@@ -718,6 +736,23 @@ namespace RecommendationEngineClient
             else
             {
                 return FoodCategory.None;
+            }
+        }
+
+        private static T GetEnumInput<T>(string prompt) where T : struct, Enum
+        {
+            while (true)
+            {
+                Console.WriteLine(prompt);
+                string input = Console.ReadLine().Trim();
+                if (Enum.TryParse(input, true, out T result) && Enum.IsDefined(typeof(T), result))
+                {
+                    return result;
+                }
+                else
+                {
+                    Console.WriteLine("Invalid input. Please try again.");
+                }
             }
         }
     }

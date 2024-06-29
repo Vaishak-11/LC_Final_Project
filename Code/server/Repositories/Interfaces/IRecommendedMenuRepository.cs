@@ -7,7 +7,7 @@ namespace RecommendationEngineServer.Repositories.Interfaces
     {
         Task<RecommendedMenu> GetByItemId(int itemId, FoodCategory category, DateTime date);
 
-        Task<List<RecommendedMenu>> GetListByDate(DateTime? date = null);
+        Task<List<RecommendedMenu>> GetListByDate(DateTime? date = null, string include = null);
 
         Task<List<RecommendedMenu>> GetByItemIds(List<int> itemIds);
     }
