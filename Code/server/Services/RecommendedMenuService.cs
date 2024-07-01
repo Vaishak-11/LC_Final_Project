@@ -292,6 +292,5 @@ namespace RecommendationEngineServer.Services
                 .ThenByDescending(d => d.OverallRating)
                 .ToList();
         }
-
     }
 }

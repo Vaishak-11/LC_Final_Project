@@ -57,24 +57,20 @@ namespace RecommendationEngineClient
                 case "4":
                     return BuildDeleteItemRequest();
 
-                case "get monthly food report":
-                case "5":
-                    return BuildFoodReportRequestRequest();
-
                 case "get feedbacks":
-                case "6":
+                case "5":
                     return BuildGetFeedbacksRequest();
 
                 case "get discard menu list":
-                case "7":
+                case "6":
                     return BuildGetDiscardMenuRequest();
 
                 case "discard food item":
-                case "8":
+                case "7":
                     return BuildDiscardMenuRequest();
 
                 case "get detailed feedback for the item":
-                case "9":
+                case "8":
                     return BuildGetDetailedFeedbackRequest();
 
                 case "logout":
@@ -485,7 +481,6 @@ namespace RecommendationEngineClient
             
             return $"getrecommendations#{dateTime: yyyy-MM-dd}";
         }
-
 
         private static string BuildUpdateRecommendationRequest()
         {

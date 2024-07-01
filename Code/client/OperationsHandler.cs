@@ -64,11 +64,10 @@ namespace RecommendationEngineClient
             Console.WriteLine("2. Get available Menu Items");
             Console.WriteLine("3. Update Menu Item");
             Console.WriteLine("4. Delete Menu Item");
-            Console.WriteLine("5. Get Monthly Food report");
-            Console.WriteLine("6. Get Feedbacks");
-            Console.WriteLine("7. Get Discard Menu List");
-            Console.WriteLine("8. Discard food item");
-            Console.WriteLine("9. Get detailed feedback for the item");
+            Console.WriteLine("5. Get Feedbacks");
+            Console.WriteLine("6. Get Discard Menu List");
+            Console.WriteLine("7. Discard food item");
+            Console.WriteLine("8. Get detailed feedback for the item");
             Console.WriteLine("Logout");
             Console.WriteLine("Enter the operation you want to perform:");
         }

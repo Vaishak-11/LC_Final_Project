@@ -54,6 +54,7 @@ namespace RecommendationEngineServer.Services
 
                 string message = itemId > 0 ? "Item added successfully." : "Adding item failed.";
                 response = ResponseHelper.CreateResponse("AddItem", message);
+
                 _logger.LogInformation($"{message} , DateTime: {DateTime.Now}");
 
                 if (itemId > 0)
@@ -220,7 +221,7 @@ namespace RecommendationEngineServer.Services
                                            predicate: f => foodItemIds.Contains(f.FoodItemId)
                                                         && f.FeedbackDate.Month == month
                                                         && f.FeedbackDate.Year == year
-                                       )).ToList();
+                                            )).ToList();
 
                 if (feedbacks.IsNullOrEmpty())
                 {
@@ -264,7 +265,7 @@ namespace RecommendationEngineServer.Services
 
                 DateTime currentDate = DateTime.Now;
 
-                List<Feedback> feedbacks = (await _feedbackRepository.GetList(predicate: f => f.FeedbackDate.Month == currentDate.Month && f.FeedbackDate.Year == currentDate.Year)).ToList();
+                List<Feedback> feedbacks = (await _feedbackRepository.GetList(predicate: f => f.FeedbackDate.Month == currentDate.Month && f.FeedbackDate.Year == currentDate.Year && !f.Comment.ToLower().Contains("detailedfb"))).ToList();
 
                 List<DiscardItemDTO> discardItems = foodItems.Select(f =>
                 {

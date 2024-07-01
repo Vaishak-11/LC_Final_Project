@@ -22,10 +22,12 @@ namespace RecommendationEngineClient
                 case "remove the food item from menu list":
                     discardMenuRequest = ServerRequestBuilder.BuildRequest("discardmenurequest");
                     break;
+
                 case "2":
                 case "get detailed feedback":
                     discardMenuRequest = ServerRequestBuilder.BuildRequest("getdetailedfeedback");
                     break;
+
                 default:
                     Console.WriteLine("Invalid option. Please try again.");
                     break;

@@ -1,6 +1,5 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using RecommendationEngineServer.Models.DTOs;
 using RecommendationEngineServer.Models.Entities;
@@ -10,6 +9,7 @@ using RecommendationEngineServer.Repositories.Interfaces;
 using RecommendationEngineServer.Services;
 using RecommendationEngineServer.Services.Interfaces;
 using ServerUnitTests.testData;
+using System.Linq.Expressions;
 
 namespace ServerUnitTests.ServiceTests
 {
@@ -23,6 +23,7 @@ namespace ServerUnitTests.ServiceTests
         private Mock<IFoodItemRepository> _mockFoodItemRepository;
         private Mock<IFeedbackRepository> _mockFeedbackRepository;
         private Mock<ILogger<RecommendedMenuService>> _mockLogger;
+        private Mock<IEmployeeRepository> _mockEmployeeRepository;
 
         [TestInitialize]
         public void Initialize()
@@ -32,6 +33,7 @@ namespace ServerUnitTests.ServiceTests
             _mockFoodItemRepository = new Mock<IFoodItemRepository>();
             _mockFeedbackRepository = new Mock<IFeedbackRepository>();
             _mockLogger = new Mock<ILogger<RecommendedMenuService>>();
+            _mockEmployeeRepository = new Mock<IEmployeeRepository>();
 
             var config = new MapperConfiguration(cfg =>
             {
@@ -46,6 +48,7 @@ namespace ServerUnitTests.ServiceTests
                 _mapper,
                 _mockNotificationService.Object,
                 _mockFeedbackRepository.Object,
+                _mockEmployeeRepository.Object,
                 _mockLogger.Object
             );
         }
@@ -106,7 +109,114 @@ namespace ServerUnitTests.ServiceTests
 
 
         #endregion AddMethod
+
+        #region GetRecommendedMenuMethod
+
+        [TestMethod]
+        public async Task GetRecommendedMenu_WithValidInput_ReturnsSuccessResponse()
+        {
+            var date = DateTime.Now;
+            var recommendedMenus = RecommendedMenuTestData.RecommendedMenuData().ToList();
+            var employee = RecommendedMenuTestData.Employees().FirstOrDefault();
+
+            _mockRecommendedMenuRepository.Setup(repo => repo.GetListByDate(date, It.IsAny<string>()))
+                .ReturnsAsync(recommendedMenus);
+
+            _mockEmployeeRepository.Setup(repo => repo.GetList(It.IsAny<Expression<Func<Employee, bool>>>()))
+                .ReturnsAsync(new List<Employee> { employee });
+
+            var result = await _recommendedMenuService.GetRecommendedMenu(date);
+
+            Assert.AreEqual("recommendedItemsList", result.Name);
+            Assert.IsFalse(string.IsNullOrEmpty(result.Value.ToString()));
+        }
+
+        [TestMethod]
+        public async Task GetRecommendedMenu_WithNoRecommendations_ReturnsErrorResponse()
+        {
+            var date = DateTime.Now;
+
+            _mockRecommendedMenuRepository.Setup(repo => repo.GetListByDate(date, It.IsAny<string>()))
+                .ReturnsAsync(new List<RecommendedMenu>());
+
+            var result = await _recommendedMenuService.GetRecommendedMenu(date);
+
+            Assert.AreEqual("GetRecommendedMenu", result.Name);
+            Assert.AreEqual("No Menu is added to display.", result.Value);
+        }
+
+        #endregion GetRecommendedMenuMethod
+
+        #region UpdateRecommendedMenuMethod
+
+        [TestMethod]
+        public async Task UpdateRecommendedMenu_ValidMenu_ReturnsSuccessResponse()
+        {
+            var recommendedMenuDTO = RecommendedMenuTestData.RecommendedMenuDTOs().FirstOrDefault();
+            var existingItem = RecommendedMenuTestData.FoodItems().FirstOrDefault();
+            var newItem = RecommendedMenuTestData.FoodItems()[1];
+            var existingRecommendedMenu = RecommendedMenuTestData.RecommendedMenuData().FirstOrDefault();
+
+            _mockFoodItemRepository.Setup(repo => repo.GetByItemName(recommendedMenuDTO.OldItemName))
+                .ReturnsAsync(existingItem);
+
+            _mockFoodItemRepository.Setup(repo => repo.GetByItemName(recommendedMenuDTO.ItemName))
+                .ReturnsAsync(newItem);
+
+            _mockRecommendedMenuRepository.Setup(repo => repo.GetByItemId(existingItem.FoodItemId, recommendedMenuDTO.OldCategory, recommendedMenuDTO.RecommendationDate))
+                .ReturnsAsync(existingRecommendedMenu);
+
+            var result = await _recommendedMenuService.UpdateRecommendedMenu(recommendedMenuDTO);
+
+            Assert.AreEqual("Update", result.Name);
+            Assert.AreEqual("Updated successfully", result.Value);
+        }
+
+        [TestMethod]
+        public async Task UpdateRecommendedMenu_InvalidMenu_ReturnsErrorResponse()
+        {
+            RecommendedMenuDTO recommendedMenuDTO = null;
+
+            var result = await _recommendedMenuService.UpdateRecommendedMenu(recommendedMenuDTO);
+
+            Assert.AreEqual("Error", result.Name);
+            Assert.AreEqual("An error occurred: Invalid recommended menu details. Please provide valid data.", result.Value);
+        }
+
+        [TestMethod]
+        public async Task UpdateRecommendedMenu_NonExistingItem_ReturnsErrorResponse()
+        {
+            var recommendedMenuDTO = RecommendedMenuTestData.RecommendedMenuDTOs().FirstOrDefault();
+            FoodItem existingItem = null;
+
+            _mockFoodItemRepository.Setup(repo => repo.GetByItemName(recommendedMenuDTO.OldItemName))
+                .ReturnsAsync(existingItem);
+
+            var result = await _recommendedMenuService.UpdateRecommendedMenu(recommendedMenuDTO);
+
+            Assert.AreEqual("Error", result.Name);
+            Assert.AreEqual("An error occurred: Existing item name not found.", result.Value);
+        }
+
+        [TestMethod]
+        public async Task UpdateRecommendedMenu_NewItemNotFound_ReturnsErrorResponse()
+        {
+            var recommendedMenuDTO = RecommendedMenuTestData.RecommendedMenuDTOs().FirstOrDefault();
+            var existingItem = RecommendedMenuTestData.FoodItems().FirstOrDefault();
+            FoodItem newItem = null;
+
+            _mockFoodItemRepository.Setup(repo => repo.GetByItemName(recommendedMenuDTO.OldItemName))
+                .ReturnsAsync(existingItem);
+
+            _mockFoodItemRepository.Setup(repo => repo.GetByItemName(recommendedMenuDTO.ItemName))
+                .ReturnsAsync(newItem);
+
+            var result = await _recommendedMenuService.UpdateRecommendedMenu(recommendedMenuDTO);
+
+            Assert.AreEqual("Error", result.Name);
+            Assert.AreEqual("An error occurred: New item name not found.", result.Value);
+        }
+
+        #endregion UpdateRecommendedMenuMethod
     }
-
-
 }

@@ -32,15 +32,14 @@ namespace RecommendationEngineServer.Services
 
         public async Task<ServerResponse> AddFeedback(FeedbackDTO feedback)
         {
+            _logger.LogInformation($"userId: {UserData.UserId}, message: AddFeedback called., Date: {DateTime.Now}");
             ServerResponse response = new ServerResponse();
 
             try
             {
-                _logger.LogInformation($"userId: {feedback.UserId}, message: AddFeedback called., Date: {DateTime.Now}");
-
                 if (feedback == null)
                 {
-                    _logger.LogInformation($"userId: {feedback.UserId}, message: Invalid feedback details., Date: {DateTime.Now}");
+                    _logger.LogInformation($"userId: {UserData.UserId}, message: Invalid feedback details., Date: {DateTime.Now}");
                     throw new ArgumentException("Invalid feedback details. Enter proper details.");
                 }
 
@@ -74,7 +73,7 @@ namespace RecommendationEngineServer.Services
             catch (Exception ex)
             {
                 response = ResponseHelper.CreateResponse("Error", ex.Message.ToString());
-                _logger.LogError($"userId: {feedback.UserId}, message: {ex.Message}, Date: {DateTime.Now}");
+                _logger.LogError($"userId: {UserData.UserId}, message: {ex.Message}, Date: {DateTime.Now}");
             }
 
             return response;
@@ -94,7 +93,7 @@ namespace RecommendationEngineServer.Services
 
                 if (feedbackList.Any())
                 {
-                    List<DisplayFeedbackDTO> feedbackDtoList = _mapper.Map<List<DisplayFeedbackDTO>>(feedbackList);
+                    List<DisplayFeedbackDTO> feedbackDtoList = _mapper.Map<List<Feedback>, List<DisplayFeedbackDTO>>(feedbackList);
                     response.Value = JsonSerializer.Serialize(feedbackDtoList);
                 }
                 else
@@ -130,7 +129,6 @@ namespace RecommendationEngineServer.Services
                     _logger.LogInformation("No feedbacks are given.");
                     return ResponseHelper.CreateResponse("DetailedFeedback", "No feedbacks are given.");
                 }
-
 
                 List<string> feedbackList = feedbacks.Select(f => f.Comment).ToList();
 

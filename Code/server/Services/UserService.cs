@@ -194,45 +194,48 @@ namespace RecommendationEngineServer.Services
         {
             try
             {
-                List<Notification> notifications = (await _notificationService.GetNotifications()).Value as List<Notification>;
+                var response = await _notificationService.GetNotifications();
 
-                if (notifications.Any())
+                if (response.Value is not List<Notification> notifications || !notifications.Any())
                 {
-                    foreach (var notification in notifications)
+                    return;
+                }
+
+                foreach (var notification in notifications)
+                {
+                    Expression<Func<User, bool>> predicate = null;
+
+                    if (!UserData.NotificationDeliverStatus.ContainsKey(notification.NotificationId))
                     {
-                        Expression<Func<User, bool>> predicate = null;
+                        UserData.NotificationDeliverStatus[notification.NotificationId] = new List<NotificationStatus>();
+                    }
 
-                        if (!UserData.NotificationDeliverStatus.ContainsKey(notification.NotificationId))
-                        {
-                            UserData.NotificationDeliverStatus[notification.NotificationId] = new List<NotificationStatus>();
-                        }
+                    if (notification.Message.Contains("item") || notification.Message.Contains("dish") || notification.Message.Contains("recommended menu"))
+                    {
+                        predicate = u => u.Role.RoleName.ToLower() == "employee";
+                    }
+                    else if (notification.Message.Contains("item"))
+                    {
+                        predicate = u => u.Role.RoleName.ToLower() == "chef";
+                    }
 
-                        if (notification.Message.Contains("item") || notification.Message.Contains("dish") || notification.Message.Contains("recommended menu"))
+                    List<User> users = (await _userRepository.GetList(predicate: predicate)).ToList();
+                    if (users.Count > 0)
+                    {
+                        foreach (var user in users)
                         {
-                            predicate = u => u.Role.RoleName.ToLower() == "employee";
-                        }
-                        else if (notification.Message.Contains("item"))
-                        {
-                            predicate = u => u.Role.RoleName.ToLower() == "chef";
-                        }
-
-                        List<User> users = (await _userRepository.GetList(predicate: predicate)).ToList();
-                        if (users.Count > 0)
-                        {
-                            foreach (var user in users)
+                            if (!UserData.NotificationDeliverStatus[notification.NotificationId].Any(ns => ns.UserId == user.UserId))
                             {
-                                if (!UserData.NotificationDeliverStatus[notification.NotificationId].Any(ns => ns.UserId == user.UserId))
+                                UserData.NotificationDeliverStatus[notification.NotificationId].Add(new NotificationStatus
                                 {
-                                    UserData.NotificationDeliverStatus[notification.NotificationId].Add(new NotificationStatus
-                                    {
-                                        UserId = user.UserId,
-                                        IsDelivered = false
-                                    });
-                                }
+                                    UserId = user.UserId,
+                                    IsDelivered = false
+                                });
                             }
                         }
                     }
                 }
+
             }
             catch (Exception ex)
             {

@@ -56,5 +56,14 @@ namespace ServerUnitTests.testData
                 }
             };
         }
+
+        public static List<Employee> Employees()
+        {
+            return new List<Employee>
+            {
+                new Employee { EmployeeId = 1, EmployeeCode = "emp1234", UserId = 1, Cuisine = Cuisine.NorthIndian, FoodDiet = FoodDiet.Vegetarian, SpiceLevel= SpiceLevel.Medium },
+                new Employee { EmployeeId = 2, EmployeeCode = "emp5678", UserId = 2, Cuisine = Cuisine.SouthIndian, FoodDiet = FoodDiet.NonVegetarian, SpiceLevel= SpiceLevel.High }
+            };
+        }
     }
 }

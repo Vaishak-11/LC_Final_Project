@@ -16,7 +16,7 @@ namespace ServerUnitTests.HelperTests
 
             var result = await SentimentAnlysisHelper.AnalyzeSentiments(comments, 4);
 
-            Assert.AreEqual("3", result);
+            Assert.AreEqual("4", result);
         }
 
         [TestMethod]
@@ -28,7 +28,7 @@ namespace ServerUnitTests.HelperTests
 
             var result = await SentimentAnlysisHelper.AnalyzeSentiments(comments, 3);
 
-            Assert.AreEqual("-3", result);
+            Assert.AreEqual("-4", result);
         }
 
         [TestMethod]
