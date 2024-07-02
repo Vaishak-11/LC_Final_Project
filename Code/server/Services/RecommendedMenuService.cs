@@ -116,7 +116,7 @@ namespace RecommendationEngineServer.Services
                     recommendationList = SortRecommendationsByEmployeePreferences(recommendationList, employee);
                 }
 
-                response.Value = employee != null? JsonSerializer.Serialize(await CreateDisplayMenuListForEmployee(recommendationList))
+                response.Value = employee != null? JsonSerializer.Serialize(await CreateDisplayMenuListForEmployee(recommendationList, employee))
                                         : JsonSerializer.Serialize(await CreateDisplayMenuList(recommendationList));
 
                 response.Name = "recommendedItemsList";
@@ -260,7 +260,7 @@ namespace RecommendationEngineServer.Services
                 .ToList();
         }
 
-        private async Task<List<DisplayRecommendedMenuForEmployeeDTO>> CreateDisplayMenuListForEmployee(List<RecommendedMenu> recommendedMenus)
+        private async Task<List<DisplayRecommendedMenuForEmployeeDTO>> CreateDisplayMenuListForEmployee(List<RecommendedMenu> recommendedMenus, Employee employee)
         {
             List<DisplayRecommendedMenuForEmployeeDTO> displayMenuListForEmployee = new();
 
@@ -282,7 +282,8 @@ namespace RecommendationEngineServer.Services
                         Price = item.Price,
                         FoodCategory = recommendedMenu.Category,
                         Rating = Math.Round(averageRating, 2),
-                        OverallRating = overallRating
+                        OverallRating = overallRating,
+                        RecommendationReason = await GetRecommendationReason(recommendedMenu, employee) 
                     });
                 }
             }
@@ -292,5 +293,39 @@ namespace RecommendationEngineServer.Services
                 .ThenByDescending(d => d.OverallRating)
                 .ToList();
         }
+
+        private async Task<string> GetRecommendationReason(RecommendedMenu recommendedMenu, Employee employee)
+        {
+            if (recommendedMenu.FoodItem == null)
+            {
+                return string.Empty;
+            }
+
+            List<string> reasonParameters = new();
+
+            if (recommendedMenu.FoodItem.Cuisine == employee.Cuisine)
+            {
+                reasonParameters.Add(recommendedMenu.FoodItem.Cuisine.ToString());
+            }
+
+            if (recommendedMenu.FoodItem.SpiceLevel == employee.SpiceLevel)
+            {
+                reasonParameters.Add(recommendedMenu.FoodItem.SpiceLevel.ToString());
+            }
+
+            if (recommendedMenu.FoodItem.FoodDiet == employee.FoodDiet)
+            {
+                reasonParameters.Add(recommendedMenu.FoodItem.FoodDiet.ToString());
+            }
+
+            if (reasonParameters.Count == 3)
+            {
+                string reason = "You can go for this since you prefer " + string.Join(", ", reasonParameters) + " food.";
+                return reason;
+            }
+
+            return string.Empty;
+        }
+
     }
 }

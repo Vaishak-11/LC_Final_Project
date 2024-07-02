@@ -13,5 +13,7 @@ namespace RecommendationEngineServer.Models.DTOs
         public double Rating { get; set; }
 
         public string OverallRating { get; set; }
+
+        public string RecommendationReason { get; set; }
     }
 }
