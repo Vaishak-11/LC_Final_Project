@@ -35,7 +35,7 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> AddRecommendedMenu(List<RecommendedMenuDTO> recommendations)
         {
             ServerResponse response = new ServerResponse();
-            _logger.LogInformation($"Adding recommended items {recommendations.Select(r => r.ItemName)}by {recommendations.First().UserId}");
+            _logger.LogInformation($"Adding recommended items by {UserData.UserId}.DateTime= {DateTime.Now}");
 
             try
             {
@@ -116,7 +116,7 @@ namespace RecommendationEngineServer.Services
                     recommendationList = SortRecommendationsByEmployeePreferences(recommendationList, employee);
                 }
 
-                response.Value = employee != null? JsonSerializer.Serialize(await CreateDisplayMenuListForEmployee(recommendationList, employee))
+                response.Value = employee != null ? JsonSerializer.Serialize(await CreateDisplayMenuListForEmployee(recommendationList, employee))
                                         : JsonSerializer.Serialize(await CreateDisplayMenuList(recommendationList));
 
                 response.Name = "recommendedItemsList";
@@ -133,7 +133,7 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> UpdateRecommendedMenu(RecommendedMenuDTO recommendedMenu)
         {
             ServerResponse response = new ServerResponse();
-            _logger.LogInformation($"Updating recommended item {recommendedMenu.ItemName} by userId: {UserData.UserId}");
+            _logger.LogInformation($"Updating recommended item by userId: {UserData.UserId}");
 
             try
             {
@@ -283,7 +283,7 @@ namespace RecommendationEngineServer.Services
                         FoodCategory = recommendedMenu.Category,
                         Rating = Math.Round(averageRating, 2),
                         OverallRating = overallRating,
-                        RecommendationReason = await GetRecommendationReason(recommendedMenu, employee) 
+                        RecommendationReason = await GetRecommendationReason(recommendedMenu, employee)
                     });
                 }
             }
@@ -310,7 +310,7 @@ namespace RecommendationEngineServer.Services
 
             if (recommendedMenu.FoodItem.SpiceLevel == employee.SpiceLevel)
             {
-                reasonParameters.Add(recommendedMenu.FoodItem.SpiceLevel.ToString());
+                reasonParameters.Add(recommendedMenu.FoodItem.SpiceLevel.ToString() + " spice level");
             }
 
             if (recommendedMenu.FoodItem.FoodDiet == employee.FoodDiet)

@@ -9,20 +9,8 @@ namespace RecommendationEngineServer.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_OrderItems_Orders_OrderId",
-                table: "OrderItems");
-
-            migrationBuilder.DropForeignKey(
                 name: "FK_OrderItems_RecommendedMenus_MenuId",
                 table: "OrderItems");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_OrderItems_Orders_OrderId",
-                table: "OrderItems",
-                column: "OrderId",
-                principalTable: "Orders",
-                principalColumn: "OrderId",
-                onDelete: ReferentialAction.Restrict);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_OrderItems_RecommendedMenus_MenuId",
@@ -30,26 +18,14 @@ namespace RecommendationEngineServer.Migrations
                 column: "MenuId",
                 principalTable: "RecommendedMenus",
                 principalColumn: "MenuId",
-                onDelete: ReferentialAction.Restrict);
+                onDelete: ReferentialAction.Cascade);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
-                name: "FK_OrderItems_Orders_OrderId",
-                table: "OrderItems");
-
-            migrationBuilder.DropForeignKey(
                 name: "FK_OrderItems_RecommendedMenus_MenuId",
                 table: "OrderItems");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_OrderItems_Orders_OrderId",
-                table: "OrderItems",
-                column: "OrderId",
-                principalTable: "Orders",
-                principalColumn: "OrderId",
-                onDelete: ReferentialAction.Cascade);
 
             migrationBuilder.AddForeignKey(
                 name: "FK_OrderItems_RecommendedMenus_MenuId",
@@ -57,7 +33,7 @@ namespace RecommendationEngineServer.Migrations
                 column: "MenuId",
                 principalTable: "RecommendedMenus",
                 principalColumn: "MenuId",
-                onDelete: ReferentialAction.Cascade);
+                onDelete: ReferentialAction.Restrict);
         }
     }
 }

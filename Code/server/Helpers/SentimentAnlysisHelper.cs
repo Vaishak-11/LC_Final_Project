@@ -20,16 +20,16 @@ namespace RecommendationEngineServer.Helpers
 
                     if (parts.Length == 2)
                     {
-                        sentimentScore += await AnalyzeComment(parts[1].Trim(),sentimentScore);
+                        sentimentScore = await AnalyzeComment(parts[1].Trim(),sentimentScore);
                     }
                     else
                     {
-                        sentimentScore += await AnalyzeComment(normalizedComment, sentimentScore);
+                        sentimentScore = await AnalyzeComment(normalizedComment, sentimentScore);
                     }
                 }
                 else
                 {
-                    sentimentScore += await AnalyzeComment(normalizedComment, sentimentScore);
+                    sentimentScore = await AnalyzeComment(normalizedComment, sentimentScore);
                 }
             }
 
@@ -59,13 +59,13 @@ namespace RecommendationEngineServer.Helpers
         {
             if (comment.Contains("not"))
             {
-                sentimentScore += await HandleNotComment(comment, sentimentScore);
+                sentimentScore = await HandleNotComment(comment, sentimentScore);
             }
             else
             {
                 if (ContainsIntensityWord(comment))
                 {
-                    sentimentScore += await HandleCommentWithIntensityWords(comment, sentimentScore);
+                    sentimentScore = await HandleCommentWithIntensityWords(comment, sentimentScore);
                 }
                 else
                 {
@@ -109,11 +109,11 @@ namespace RecommendationEngineServer.Helpers
                     }
                     else if (Enum.TryParse(words[i], true, out NegativeCommentWords negativeWord))
                     {
-                        --sentimentScore;
+                        ++sentimentScore;
                     }
                     else if(Enum.TryParse(words[i], true, out PositiveCommentWords positiveWord))
                     {
-                        ++sentimentScore;
+                        --sentimentScore;
                     }
 
                     isNegativeContext = false;

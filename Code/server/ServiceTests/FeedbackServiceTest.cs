@@ -46,7 +46,7 @@ namespace ServerUnitTests.ServiceTests
                                     _mockOrderItemRepository.Object,
                                     _mockLogger.Object,
                                     _mockNotificationService.Object);
-                                }
+        }
 
         #endregion Constructor
 
@@ -63,6 +63,39 @@ namespace ServerUnitTests.ServiceTests
 
             Assert.AreEqual("Error", result.Name);
             Assert.AreEqual("Invalid feedback details. Enter proper details.", result.Value);
+        }
+
+        [TestMethod]
+        public async Task AddFeedback_InvalidItemName_ShouldReturnErrorResponse()
+        {
+            var feedbackDTO = FeedbackServiceTestData.FeedbackDTOs().FirstOrDefault();
+            var foodItem = (FoodItem)null;
+
+            _mockFoodItemRepository.Setup(repo => repo.GetByItemName(feedbackDTO.ItemName))
+                .ReturnsAsync(foodItem);
+
+            var result = await _feedbackService.AddFeedback(feedbackDTO);
+
+            Assert.AreEqual("Error", result.Name);
+            Assert.AreEqual("This item name doesn't exist.", result.Value);
+        }
+
+        [TestMethod]
+        public async Task AddFeedback_ItemNotOrdered_ShouldReturnErrorResponse()
+        {
+            var feedbackDTO = FeedbackServiceTestData.FeedbackDTOs().FirstOrDefault();
+            var foodItem = FeedbackServiceTestData.FoodItems().FirstOrDefault();
+
+            _mockFoodItemRepository.Setup(repo => repo.GetByItemName(feedbackDTO.ItemName))
+                .ReturnsAsync(foodItem);
+
+            _mockOrderItemRepository.Setup(repo => repo.OrderItemExists(It.IsAny<Expression<Func<OrderItem, bool>>>()))
+                .ReturnsAsync(false);
+
+            var result = await _feedbackService.AddFeedback(feedbackDTO);
+
+            Assert.AreEqual("AddFeedback", result.Name);
+            Assert.AreEqual("Sorry! You have not ordered this item. Please order this item to give feedback.", result.Value);
         }
 
         [TestMethod]
@@ -94,6 +127,21 @@ namespace ServerUnitTests.ServiceTests
         #endregion AddFeedback Method
 
         #region GetFeedbacks Method
+
+        [TestMethod]
+        public async Task GetFeedbacks_InvalidItemName_ReturnsErrorResponse()
+        {
+            var itemName = "Dosa";
+            var foodItem = (FoodItem)null;
+
+            _mockFoodItemRepository.Setup(repo => repo.GetByItemName(itemName))
+                .ReturnsAsync(foodItem);
+
+            var result = await _feedbackService.GetFeedbacks(itemName);
+
+            Assert.AreEqual("Error", result.Name);
+            Assert.AreEqual("This item name does not exist.", result.Value);
+        }
 
         [TestMethod]
         public async Task GetFeedbacks_ValidItemName_ReturnsFeedbackList()

@@ -98,7 +98,7 @@ namespace RecommendationEngineServer.Services
                 {
                     var feedbacks = feedbackList.Where(f => f.FoodItemId == foodItem.FoodItemId).ToList();
                     var averageRating = feedbacks.Any() ? Math.Round((double)feedbacks.Average(f => f.Rating), 2) : 0;
-                    var comments = feedbacks.Any() ? feedbacks.Select(f => f.Comment).ToList() : new List<string>();
+                    var comments = feedbacks.Any() ? feedbacks.Where(f=>!f.Comment.ToLower().Contains("detailedfb")).Select(f => f.Comment).ToList() : new List<string>();
                     var overallRating = await SentimentAnlysisHelper.AnalyzeSentiments(comments, averageRating);
 
                     return new DisplayMenuDTO
@@ -177,6 +177,7 @@ namespace RecommendationEngineServer.Services
 
             return response;
         }
+
 
         public async Task<ServerResponse> Delete(string itemName)
         {

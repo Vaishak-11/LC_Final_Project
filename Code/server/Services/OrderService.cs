@@ -29,7 +29,7 @@ namespace RecommendationEngineServer.Services
         public async Task<ServerResponse> AddOrder(OrderDTO order)
         {
             ServerResponse response = new ServerResponse();
-            _logger.LogInformation($"Add order method called for {order.ItemNames}; UserId: {order.UserId} DateTime:{DateTime.Now}");
+            _logger.LogInformation($"Add order method called; UserId: {UserData.UserId} DateTime:{DateTime.Now}");
 
             try 
             {
@@ -39,6 +39,8 @@ namespace RecommendationEngineServer.Services
                     response =ResponseHelper.CreateResponse("Error", "Invalid order details. Enter proper details.");
                     return response;
                 }
+
+                _logger.LogInformation($"Add order method called for items {order.ItemNames}; UserId: {UserData.UserId} DateTime:{DateTime.Now}");
 
                 List<FoodItem> existingItems = await _foodItemRepository.GetByItemNames(order.ItemNames);
                 List<string> nonexistingItems = order.ItemNames.Except(existingItems.Select(m => m.ItemName)).ToList();
@@ -117,9 +119,9 @@ namespace RecommendationEngineServer.Services
 
             try
             {
-                List<Order> orders = ((await _orderRepository.GetListByDate(date)).ToList()) ?? throw new Exception("Failed to fetch orders.");
+                List<Order> orders = ((await _orderRepository.GetListByDate(date)).ToList());
 
-                if (!orders.Any())
+                if (orders == null || !orders.Any())
                 {
                     _logger.LogError("No orders found.");
                     return ResponseHelper.CreateResponse("GetOrders", "No orders found.");

@@ -16,7 +16,7 @@ namespace ServerUnitTests.HelperTests
 
             var result = await SentimentAnlysisHelper.AnalyzeSentiments(comments, 4);
 
-            Assert.AreEqual("4", result);
+            Assert.AreEqual("3", result);
         }
 
         [TestMethod]
@@ -28,20 +28,17 @@ namespace ServerUnitTests.HelperTests
 
             var result = await SentimentAnlysisHelper.AnalyzeSentiments(comments, 3);
 
-            Assert.AreEqual("-4", result);
+            Assert.AreEqual("-3", result);
         }
 
         [TestMethod]
         public async Task AnalyzeSentiments_MixedComments_ReturnsNeutralSentimentScore()
         {
-            // Arrange
             var comments = HelperTestData.Comments().Skip(2).Take(2).ToList();
             UserData.RoleId = 2;
 
-            // Act
             var result = await SentimentAnlysisHelper.AnalyzeSentiments(comments, 3.5);
 
-            // Assert
             Assert.AreEqual("0", result);
         }
 

@@ -124,7 +124,6 @@ namespace ServerUnitTests.ServiceTests
         [TestMethod]
         public async Task Update_ValidItem_ShouldReturnSuccessResponse()
         {
-            // Arrange
             var foodItemDto = FoodItemTestData.FoodItemDTO()[1];
             var existingItemOldName = FoodItemTestData.FoodItems().FirstOrDefault(); 
             var item = FoodItemTestData.FoodItems()[1];
@@ -141,12 +140,11 @@ namespace ServerUnitTests.ServiceTests
             _mockFoodItemRepository.Setup(r => r.GetByItemName(foodItemDto.ItemName)).ReturnsAsync((FoodItem)null); 
             _mockFoodItemRepository.Setup(r => r.Update(It.IsAny<FoodItem>())).Returns(Task.CompletedTask);
             _mockNotificationService.Setup(n => n.AddNotification(It.IsAny<Notification>())).ReturnsAsync(1);
-            _mockMapper.Setup(m => m.Map<FoodItem>(It.IsAny<FoodItemDTO>())).Returns(updatedItem);
+            _mockMapper.Setup(m => m.Map<FoodItemDTO, FoodItem>(foodItemDto))
+                .Returns(updatedItem);
 
-            // Act
             var result = await _foodItemService.Update("Dosa", foodItemDto, "y");
 
-            // Assert
             Assert.AreEqual("Update", result.Name);
             Assert.AreEqual("Updated succesfully", result.Value);
         }
@@ -191,20 +189,16 @@ namespace ServerUnitTests.ServiceTests
         [TestMethod]
         public async Task GetList_ShouldReturnFoodItems()
         {
-            // Arrange
             var foodItems = FoodItemTestData.FoodItems();
             _mockFoodItemRepository.Setup(r => r.GetList(It.IsAny<Expression<Func<FoodItem, bool>>>())).ReturnsAsync(foodItems);
             _mockFeedbackRepository.Setup(r => r.GetList(It.IsAny<Expression<Func<Feedback, bool>>>())).ReturnsAsync(FoodItemTestData.Feedbacks());
 
-            // Act
             var result = await _foodItemService.GetList();
 
-            // Assert
             Assert.IsNotNull(result);
             Assert.AreEqual("ItemList", result.Name);
 
-            var jsonString = result.Value.ToString();
-            var resultItems = DeserializeJson(jsonString);
+            var resultItems = JsonSerializer.Deserialize<List<DisplayMenuDTO>>(result.Value.ToString());
 
             Assert.IsNotNull(resultItems);
             Assert.AreEqual(foodItems.Count, resultItems.Count);
@@ -219,33 +213,10 @@ namespace ServerUnitTests.ServiceTests
 
             Assert.IsNotNull(result);
             Assert.AreEqual("ItemList", result.Name); 
-
         }
 
         #endregion GetList Method
 
         #endregion Test Methods
-
-        #region private helper emthod
-
-        private List<DisplayMenuDTO> DeserializeJson(string jsonString)
-        {
-            byte[] jsonData = Encoding.UTF8.GetBytes(jsonString);
-            Utf8JsonReader reader = new Utf8JsonReader(jsonData);
-
-            var resultItems = new List<DisplayMenuDTO>();
-            while (reader.Read())
-            {
-                if (reader.TokenType == JsonTokenType.StartObject)
-                {
-                    var item = JsonSerializer.Deserialize<DisplayMenuDTO>(ref reader);
-                    resultItems.Add(item);
-                }
-            }
-            return resultItems;
-        }
-
-        #endregion private helper emthod
-
     }
 }

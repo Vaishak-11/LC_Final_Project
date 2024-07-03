@@ -12,8 +12,8 @@ using RecommendationEngineServer.Context;
 namespace RecommendationEngineServer.Migrations
 {
     [DbContext(typeof(ServerDbContext))]
-    [Migration("20240627090913_third-context")]
-    partial class thirdcontext
+    [Migration("20240613144138_Initial-Context")]
+    partial class InitialContext
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -63,7 +63,7 @@ namespace RecommendationEngineServer.Migrations
                     b.Property<int>("FoodItemId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("Rating")
+                    b.Property<int>("Rating")
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
@@ -86,13 +86,7 @@ namespace RecommendationEngineServer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FoodItemId"), 1L, 1);
 
-                    b.Property<int>("Cuisine")
-                        .HasColumnType("int");
-
                     b.Property<int>("FoodCategory")
-                        .HasColumnType("int");
-
-                    b.Property<int>("FoodDiet")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsAvailable")
@@ -104,9 +98,6 @@ namespace RecommendationEngineServer.Migrations
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("SpiceLevel")
-                        .HasColumnType("int");
 
                     b.HasKey("FoodItemId");
 
@@ -238,20 +229,11 @@ namespace RecommendationEngineServer.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"), 1L, 1);
 
-                    b.Property<int>("Cuisine")
-                        .HasColumnType("int");
-
-                    b.Property<int>("FoodDiet")
-                        .HasColumnType("int");
-
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SpiceLevel")
                         .HasColumnType("int");
 
                     b.Property<string>("UserName")
@@ -279,7 +261,7 @@ namespace RecommendationEngineServer.Migrations
             modelBuilder.Entity("RecommendationEngineServer.Models.Entities.Feedback", b =>
                 {
                     b.HasOne("RecommendationEngineServer.Models.Entities.FoodItem", "FoodItem")
-                        .WithMany("Feedbacks")
+                        .WithMany()
                         .HasForeignKey("FoodItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -320,7 +302,7 @@ namespace RecommendationEngineServer.Migrations
             modelBuilder.Entity("RecommendationEngineServer.Models.Entities.OrderItem", b =>
                 {
                     b.HasOne("RecommendationEngineServer.Models.Entities.RecommendedMenu", "RecommendedMenu")
-                        .WithMany("OrderItems")
+                        .WithMany()
                         .HasForeignKey("MenuId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -328,7 +310,7 @@ namespace RecommendationEngineServer.Migrations
                     b.HasOne("RecommendationEngineServer.Models.Entities.Order", "Order")
                         .WithMany()
                         .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Order");
@@ -339,7 +321,7 @@ namespace RecommendationEngineServer.Migrations
             modelBuilder.Entity("RecommendationEngineServer.Models.Entities.RecommendedMenu", b =>
                 {
                     b.HasOne("RecommendationEngineServer.Models.Entities.FoodItem", "FoodItem")
-                        .WithMany("RecommendedMenus")
+                        .WithMany()
                         .HasForeignKey("FoodItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -364,18 +346,6 @@ namespace RecommendationEngineServer.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("RecommendationEngineServer.Models.Entities.FoodItem", b =>
-                {
-                    b.Navigation("Feedbacks");
-
-                    b.Navigation("RecommendedMenus");
-                });
-
-            modelBuilder.Entity("RecommendationEngineServer.Models.Entities.RecommendedMenu", b =>
-                {
-                    b.Navigation("OrderItems");
                 });
 #pragma warning restore 612, 618
         }

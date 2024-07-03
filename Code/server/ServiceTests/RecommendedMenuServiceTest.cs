@@ -113,7 +113,7 @@ namespace ServerUnitTests.ServiceTests
         #region GetRecommendedMenuMethod
 
         [TestMethod]
-        public async Task GetRecommendedMenu_WithValidInput_ReturnsSuccessResponse()
+        public async Task GetRecommendedMenu_WithValidInputForEmployee_ReturnsSuccessResponse()
         {
             var date = DateTime.Now;
             var recommendedMenus = RecommendedMenuTestData.RecommendedMenuData().ToList();
@@ -132,7 +132,26 @@ namespace ServerUnitTests.ServiceTests
         }
 
         [TestMethod]
-        public async Task GetRecommendedMenu_WithNoRecommendations_ReturnsErrorResponse()
+        public async Task GetRecommendedMenu_WithValidInputForChef_ReturnsSuccessResponse()
+        {
+            var date = DateTime.Now;
+            var recommendedMenus = RecommendedMenuTestData.RecommendedMenuData().ToList();
+            var employee = RecommendedMenuTestData.Employees().FirstOrDefault();
+
+            _mockRecommendedMenuRepository.Setup(repo => repo.GetListByDate(date, It.IsAny<string>()))
+                .ReturnsAsync(recommendedMenus);
+
+            _mockEmployeeRepository.Setup(repo => repo.GetList(It.IsAny<Expression<Func<Employee, bool>>>()))
+                .ReturnsAsync(new List<Employee>());
+
+            var result = await _recommendedMenuService.GetRecommendedMenu(date);
+
+            Assert.AreEqual("recommendedItemsList", result.Name);
+            Assert.IsFalse(string.IsNullOrEmpty(result.Value.ToString()));
+        }
+
+        [TestMethod]
+        public async Task GetRecommendedMenu_WithNoRecommendations_ReturnsEmptyList()
         {
             var date = DateTime.Now;
 
@@ -214,7 +233,7 @@ namespace ServerUnitTests.ServiceTests
             var result = await _recommendedMenuService.UpdateRecommendedMenu(recommendedMenuDTO);
 
             Assert.AreEqual("Error", result.Name);
-            Assert.AreEqual("An error occurred: New item name not found.", result.Value);
+            Assert.AreEqual("An error occurred: New item name not found", result.Value);
         }
 
         #endregion UpdateRecommendedMenuMethod

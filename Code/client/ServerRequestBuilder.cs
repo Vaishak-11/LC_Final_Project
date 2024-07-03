@@ -423,11 +423,22 @@ namespace RecommendationEngineClient
 
             while (true)
             {
-                Console.WriteLine("Enter the food category for which you want to recommend items [Breakfast, Lunch, Dinner, Beverage]: ");
-                string category = Console.ReadLine()?.Trim();
+                string category;
+                int numberOfItems;
 
-                Console.Write("Enter the number of items to be recommended: ");
-                int numberOfItems = Convert.ToInt32(Console.ReadLine());
+                do
+                {
+                    Console.WriteLine("Enter the food category for which you want to recommend items [Breakfast, Lunch, Dinner, Beverage]: ");
+                    category = Console.ReadLine()?.Trim();
+                }
+                while (category.ToLower() != "breakfast" && category.ToLower() != "lunch" && category.ToLower() != "dinner" && category.ToLower() != "beverage");
+
+                do
+                {
+                    Console.Write("Enter the number of items to be recommended: ");
+                }
+                while (!int.TryParse(Console.ReadLine(), out numberOfItems) || numberOfItems <= 0);
+
 
                 for (int i = 0; i < numberOfItems; i++)
                 {
