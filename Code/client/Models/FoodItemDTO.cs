@@ -17,6 +17,12 @@ namespace RecommendationEngineClient.Models
         public FoodCategory FoodCategory { get; set; }
 
         public bool IsAvailable { get; set; }
+
+        public Cuisine Cuisine { get; set; }
+
+        public FoodDiet FoodDiet { get; set; }
+
+        public SpiceLevel SpiceLevel { get; set; }
     }
 
     public enum FoodCategory

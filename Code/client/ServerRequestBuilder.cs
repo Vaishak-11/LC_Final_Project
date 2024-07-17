@@ -280,6 +280,18 @@ namespace RecommendationEngineClient
             Console.Write("Is the item available? [Y/N]: ");
             item.IsAvailable = Console.ReadLine().ToLower() == "y" ? true : false;
 
+            Console.WriteLine("(Leave blank for the below if you dont have preference)");
+            Console.Write("Enter the cuisine for it [NorthIndian, SouthIndian, Chinese, Other]: ");
+            string cuisineInput = Console.ReadLine();
+            item.Cuisine = string.IsNullOrEmpty(cuisineInput) ? Cuisine.NoPreference : (Cuisine)Enum.Parse(typeof(Cuisine), cuisineInput.Trim(), true);
+            
+            Console.WriteLine("(Leave blank for the below if you dont have preference)");
+            Console.Write("Enter food diet for it[Veg, Non-Veg, Egg]: ");
+            string dietInput = Console.ReadLine();
+            item.FoodDiet = string.IsNullOrEmpty(dietInput) ? FoodDiet.NoPreference : SetFoodDiet(dietInput.Trim());
+
+            item.SpiceLevel = GetEnumInput<SpiceLevel>("Enter spice level for it [Low, Medium, High]: ");
+
             string menuJson = JsonSerializer.Serialize(item);
             return $"additem#{menuJson}";
         }
@@ -760,6 +772,29 @@ namespace RecommendationEngineClient
                     Console.WriteLine("Invalid input. Please try again.");
                 }
             }
+        }
+
+        private static FoodDiet SetFoodDiet(string input)
+        {
+            FoodDiet foodDiet;
+
+            switch(input.ToLower())
+            {
+                case "non":
+                    foodDiet = FoodDiet.NonVegetarian;
+                    break;
+                case "veg":
+                    foodDiet = FoodDiet.Vegetarian;
+                    break;
+                case "egg":
+                    foodDiet = FoodDiet.Eggetarian;
+                    break;  
+                default:
+                    foodDiet = FoodDiet.NoPreference;
+                    break;
+            }
+
+            return foodDiet;
         }
     }
 }
