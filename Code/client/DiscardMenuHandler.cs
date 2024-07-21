@@ -4,6 +4,9 @@ namespace RecommendationEngineClient
 {
     public class DiscardMenuHandler
     {
+        private readonly ResponseHandler _responseHandler = new();
+        private readonly ServerRequestBuilder _serverRequestBuilder = new();
+
         public async Task HandleDiscardMenuRequest()
         {
             string? discardMenuOption = null;
@@ -20,12 +23,12 @@ namespace RecommendationEngineClient
             {
                 case "1":
                 case "remove the food item from menu list":
-                    discardMenuRequest = ServerRequestBuilder.BuildRequest("discardmenurequest");
+                    discardMenuRequest = _serverRequestBuilder.BuildRequest("discardmenurequest");
                     break;
 
                 case "2":
                 case "get detailed feedback":
-                    discardMenuRequest = ServerRequestBuilder.BuildRequest("getdetailedfeedback");
+                    discardMenuRequest = _serverRequestBuilder.BuildRequest("getdetailedfeedback");
                     break;
 
                 default:
@@ -36,7 +39,7 @@ namespace RecommendationEngineClient
             if (!string.IsNullOrEmpty(discardMenuRequest))
             {
                 ServerResponse discardMenuResponse = ServerCommunicator.SendRequestToServer(discardMenuRequest);
-                ResponseHandler.HandleResponse(discardMenuResponse);
+                _responseHandler.HandleResponse(discardMenuResponse);
             }
         }
     }

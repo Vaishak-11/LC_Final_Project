@@ -1,5 +1,4 @@
 ﻿using RecommendationEngineClient.Models;
-using System;
 
 namespace RecommendationEngineClient
 {
@@ -11,7 +10,9 @@ namespace RecommendationEngineClient
         private bool _isDiscardMenuRequested = false;
 
         private readonly AuthenticationHandler _authenticationHandler = new();
-        private readonly DiscardMenuHandler _menuHandler = new();
+        private readonly DiscardMenuHandler _discardMenuHandler = new();
+        private readonly ResponseHandler _responseHandler = new();
+        private readonly ServerRequestBuilder _serverRequestBuilder = new();
 
         public async Task DisplayOperations()
         {
@@ -27,7 +28,7 @@ namespace RecommendationEngineClient
 
                 if(_isDiscardMenuRequested)
                 {
-                    await _menuHandler.HandleDiscardMenuRequest();
+                    await _discardMenuHandler.HandleDiscardMenuRequest();
                 }
 
                 while (!_isLogoutRequested && _isUserLoggedIn)
@@ -127,23 +128,25 @@ namespace RecommendationEngineClient
         {
             string command = Console.ReadLine();
 
-            string request = ServerRequestBuilder.BuildRequest(command);
+            string request = _serverRequestBuilder.BuildRequest(command);
 
             if (request != null)
             {
                 ServerResponse response = ServerCommunicator.SendRequestToServer(request);
+                
                 if (command.ToLower() == "logout")
                 {
                     _isLogoutRequested = true;
                     _isUserLoggedIn = false;
                     _welcomeMessageShown = false;
                 }
+                
                 if (command.ToLower().Contains("discard"))
                 {
                     _isDiscardMenuRequested = true;
                 }
 
-                ResponseHandler.HandleResponse(response);
+                _responseHandler.HandleResponse(response);
             }
         }  
     }

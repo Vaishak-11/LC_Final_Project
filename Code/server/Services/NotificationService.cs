@@ -53,7 +53,6 @@ namespace RecommendationEngineServer.Services
             {
                 return 0;
             }
-            
         }
 
         public async Task<ServerResponse> GetNotifications(int userId = 0)
@@ -74,7 +73,7 @@ namespace RecommendationEngineServer.Services
                             predicate = n => n.Message.ToLower().Contains("item") && !n.IsDelivered;
                             break;
                         case 3:
-                            predicate = n => (n.Message.ToLower().Contains("recommended menu") || n.Message.ToLower().Contains("item")) && !n.IsDelivered;
+                            predicate = n => (n.Message.ToLower().Contains("recommended menu") || n.Message.ToLower().Contains("item")  || n.Message.ToLower().Contains("dish")) && !n.IsDelivered;
                             break;
                         default:
                             break;

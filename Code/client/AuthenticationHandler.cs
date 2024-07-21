@@ -4,6 +4,9 @@ namespace RecommendationEngineClient
 {
     public class AuthenticationHandler
     {
+        private readonly ResponseHandler _responseHandler = new();
+        private readonly ServerRequestBuilder _serverRequestBuilder = new();
+
         public async Task<bool> HandleLoginOrRegister()
         {
             Console.WriteLine("Please register/ login first. Enter 'a' for login 'b' for creating account");
@@ -25,11 +28,11 @@ namespace RecommendationEngineClient
                     return false;
             }
 
-            string loginRequest = ServerRequestBuilder.BuildRequest(loginCommand);
+            string loginRequest = _serverRequestBuilder.BuildRequest(loginCommand);
             if (loginRequest != null)
             {
                 ServerResponse loginResponse = ServerCommunicator.SendRequestToServer(loginRequest);
-                ResponseHandler.HandleResponse(loginResponse);
+                _responseHandler.HandleResponse(loginResponse);
 
                 if (!loginResponse.Value.ToString().Contains("failed", StringComparison.OrdinalIgnoreCase))
                 {

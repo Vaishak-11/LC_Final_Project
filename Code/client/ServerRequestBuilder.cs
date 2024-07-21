@@ -6,7 +6,9 @@ namespace RecommendationEngineClient
 {
     public class ServerRequestBuilder
     {
-        public static string BuildRequest(string command)
+        private static readonly string[] roles = {"admin", "chef", "employee"};
+        
+        public string BuildRequest(string command)
         {
             switch (command.ToLower())
             {
@@ -19,7 +21,7 @@ namespace RecommendationEngineClient
             }
         }
 
-        private static string BuildRoleBasedRequest(string command)
+        private string BuildRoleBasedRequest(string command)
         {
             int currentRoleId = UserData.RoleId < 1 ? throw new Exception("Invalid role") : UserData.RoleId;
 
@@ -37,7 +39,7 @@ namespace RecommendationEngineClient
             }
         }
 
-        private static string BuildAdminRequest(string command)
+        private string BuildAdminRequest(string command)
         {
             switch (command.ToLower())
             {
@@ -82,7 +84,7 @@ namespace RecommendationEngineClient
             }
         }
 
-        private static string BuildEmployeeRequest(string command)
+        private string BuildEmployeeRequest(string command)
         {
             switch (command.ToLower())
             {
@@ -115,7 +117,7 @@ namespace RecommendationEngineClient
             }
         }
 
-        private static string BuildChefRequest(string command)
+        private string BuildChefRequest(string command)
         {
             switch (command.ToLower())
             {
@@ -168,7 +170,7 @@ namespace RecommendationEngineClient
             }
         }
 
-        private static string BuildLoginRequest()
+        private string BuildLoginRequest()
         {
             string role = null;
             Console.WriteLine("Which role would you like to log in as? (Employee, Admin, Chef)");
@@ -178,7 +180,7 @@ namespace RecommendationEngineClient
                 Console.Write("Enter your role: ");
                 role = Console.ReadLine()?.Trim().ToLower();
 
-                if (role == "employee" || role == "admin" || role == "chef")
+                if (roles.Contains(role.ToLower()))
                 {
                     break; 
                 }
@@ -188,24 +190,39 @@ namespace RecommendationEngineClient
                 }
             }
 
-            UserLoginDTO user = new UserLoginDTO();
+            UserLoginDTO user = new();
             user.Role = role;
 
             switch (role.ToLower())
             {
                 case "employee":
-                    Console.WriteLine("Enter your Employee Code:");
-                    user.UserName = Console.ReadLine();
+                    while(string.IsNullOrWhiteSpace(user.UserName))
+                    {
+                        Console.WriteLine("Enter your Employee Code:");
+                        user.UserName = Console.ReadLine();
+
+                        ValidateInputString(user.UserName,"employee code");
+                    }
                     break;
 
                 default:
-                    Console.WriteLine("Enter your UserName:");
-                    user.UserName = Console.ReadLine();
+                    while (string.IsNullOrWhiteSpace(user.UserName))
+                    {
+                        Console.WriteLine("Enter your UserName:");
+                        user.UserName = Console.ReadLine();
+
+                        ValidateInputString(user.UserName, "username");
+                    }
                     break;
             }
 
-            Console.WriteLine("Enter your Password:");
-            user.Password = Console.ReadLine();
+            while (string.IsNullOrWhiteSpace(user.Password))
+            {
+                Console.WriteLine("Enter your Password:");
+                user.Password = Console.ReadLine();
+
+                ValidateInputString(user.Password, "password");
+            }
 
             string userJson = JsonSerializer.Serialize(user);
             return $"login#{userJson}";
@@ -216,15 +233,18 @@ namespace RecommendationEngineClient
             return $"logout#{UserData.UserId}";
         }
 
-        private static string BuildRegisterRequest()
+        private string BuildRegisterRequest()
         {
             string role = null;
 
             Console.WriteLine("Which role would you like to log in as? (Employee, Admin, Chef)");
             while (true)
             {
-                Console.Write("Enter your role: ");
-                role = Console.ReadLine()?.Trim().ToLower();
+                while (string.IsNullOrWhiteSpace(role))
+                {
+                    Console.Write("Enter your role: ");
+                    role = Console.ReadLine()?.Trim().ToLower();
+                }
 
                 if (role == "employee" || role == "admin" || role == "chef")
                 {
@@ -239,23 +259,38 @@ namespace RecommendationEngineClient
             UserLoginDTO user = new UserLoginDTO();
             user.Role = role;
 
-            Console.WriteLine("Enter your UserName:");
-            user.UserName = Console.ReadLine();
+            while (string.IsNullOrWhiteSpace(user.UserName))
+            {
+                Console.WriteLine("Enter your UserName:");
+                user.UserName = Console.ReadLine();
 
-            Console.WriteLine("Enter your Password:");
-            user.Password = Console.ReadLine();
+                ValidateInputString(user.UserName, "username");
+            }
+
+            while (string.IsNullOrWhiteSpace(user.Password))
+            {
+                Console.WriteLine("Enter your Password:");
+                user.Password = Console.ReadLine();
+
+                ValidateInputString(user.Password, "password");
+            }
 
             if (role == "employee")
             {
-                Console.Write("Enter your Employee Code: ");
-                user.EmployeeCode = Console.ReadLine();
+                while (string.IsNullOrWhiteSpace(user.EmployeeCode))
+                {
+                    Console.Write("Enter your Employee Code: ");
+                    user.EmployeeCode = Console.ReadLine();
+
+                    ValidateInputString(user.EmployeeCode, "employee code");
+                }
             }
 
             string userJson = JsonSerializer.Serialize(user);
             return $"register#{userJson}";
         }
 
-        private static string BuildAddItemRequest()
+        private string BuildAddItemRequest()
         {
             FoodItemDTO item = new FoodItemDTO();
 
@@ -263,12 +298,22 @@ namespace RecommendationEngineClient
             {
                 Console.Write("Enter the Food item name: ");
                 item.ItemName = Console.ReadLine();
+
+                ValidateInputString(item.ItemName, "item name");
             }
-            
-            while (item.Price <= 0)
+
+            while (true)
             {
                 Console.Write("Enter the price for it: ");
-                item.Price = Convert.ToDecimal(Console.ReadLine());
+                if (decimal.TryParse(Console.ReadLine(), out decimal price) && price > 0)
+                {
+                    item.Price = price;
+                    break;
+                }
+                else
+                {
+                    Console.WriteLine("Invalid price. Please enter a valid price.");
+                }
             }
 
             while (item.FoodCategory == FoodCategory.None)
@@ -283,12 +328,12 @@ namespace RecommendationEngineClient
             Console.WriteLine("(Leave blank for the below if you dont have preference)");
             Console.Write("Enter the cuisine for it [NorthIndian, SouthIndian, Chinese, Other]: ");
             string cuisineInput = Console.ReadLine();
-            item.Cuisine = string.IsNullOrEmpty(cuisineInput) ? Cuisine.NoPreference : (Cuisine)Enum.Parse(typeof(Cuisine), cuisineInput.Trim(), true);
+            item.Cuisine = string.IsNullOrWhiteSpace(cuisineInput) ? Cuisine.NoPreference : (Cuisine)Enum.Parse(typeof(Cuisine), cuisineInput.Trim(), true);
             
             Console.WriteLine("(Leave blank for the below if you dont have preference)");
             Console.Write("Enter food diet for it[Veg, Non-Veg, Egg]: ");
             string dietInput = Console.ReadLine();
-            item.FoodDiet = string.IsNullOrEmpty(dietInput) ? FoodDiet.NoPreference : SetFoodDiet(dietInput.Trim());
+            item.FoodDiet = string.IsNullOrWhiteSpace(dietInput) ? FoodDiet.NoPreference : SetFoodDiet(dietInput.Trim());
 
             item.SpiceLevel = GetEnumInput<SpiceLevel>("Enter spice level for it [Low, Medium, High]: ");
 
@@ -296,12 +341,12 @@ namespace RecommendationEngineClient
             return $"additem#{menuJson}";
         }
 
-        private static string BuildGetFoodItemsRequest()
+        private string BuildGetFoodItemsRequest()
         {
             return "getitems";
         }
 
-        private static string BuildUpdateItemRequest()
+        private string BuildUpdateItemRequest()
         {
             string oldItemName = null;
 
@@ -309,6 +354,8 @@ namespace RecommendationEngineClient
             {
                 Console.Write("Enter the name of the item you want to update: ");
                 oldItemName = Console.ReadLine();
+
+                ValidateInputString(oldItemName, "item name");
             }
 
             string availablity = null;
@@ -328,13 +375,29 @@ namespace RecommendationEngineClient
                 switch (param)
                 {
                     case "name":
-                        Console.Write("Enter the new Food item name: ");
-                        item.ItemName = Console.ReadLine();
+                        while (string.IsNullOrWhiteSpace(item.ItemName))
+                        {
+                            Console.Write("Enter the new Food item name: ");
+                            item.ItemName = Console.ReadLine();
+
+                            ValidateInputString(item.ItemName, "item name");
+                        }
                         break;
 
                     case "price":
-                        Console.Write("Enter the price for it: ");
-                        item.Price = Convert.ToDecimal(Console.ReadLine());
+                        while (true)
+                        {
+                            Console.Write("Enter the price for it: ");
+                            if (decimal.TryParse(Console.ReadLine(), out decimal price) && price > 0)
+                            {
+                                item.Price = price;
+                                break;
+                            }
+                            else
+                            {
+                                Console.WriteLine("Invalid price. Please enter a valid positive number.");
+                            }
+                        }
                         break;
 
                     case "category":
@@ -357,15 +420,22 @@ namespace RecommendationEngineClient
             return $"updateitem#{oldItemName}#{menuJson}#{availablity}";
         }
 
-        private static string BuildDeleteItemRequest()
+        private string BuildDeleteItemRequest()
         {
-            Console.Write("Enter the name of the item you want to delete: ");
-            string itemName = Console.ReadLine();
+            string itemName = null;
+
+            while (string.IsNullOrWhiteSpace(itemName))
+            {
+                Console.Write("Enter the name of the item you want to delete: ");
+                itemName = Console.ReadLine();
+            }
+
+            ValidateInputString(itemName, "item name");
 
             return $"deleteitem#{itemName}";
         }
 
-        private static string BuildFoodReportRequestRequest()
+        private string BuildFoodReportRequestRequest()
         {
             Console.Write("Enter the month for which you want to see the report [1-12]: ");
             int month = Convert.ToInt32(Console.ReadLine());
@@ -377,7 +447,7 @@ namespace RecommendationEngineClient
 
             Console.Write("Enter the year for which you want to see the report: ");
             int year = Convert.ToInt32(Console.ReadLine());
-            while(year > DateTime.Now.Year)
+            while (year > DateTime.Now.Year)
             {
                 Console.WriteLine("Invalid year. Please enter a year which is less than or equal to current year");
                 year = Convert.ToInt32(Console.ReadLine());
@@ -386,50 +456,57 @@ namespace RecommendationEngineClient
             return $"getfoodreport#{month}#{year}";
         }
 
-        private static string BuildAddFeedbackRequest()
+        private string BuildAddFeedbackRequest()
         {
             FeedbackDTO feedbackDTO = new FeedbackDTO();
             feedbackDTO.UserId = UserData.UserId;
             feedbackDTO.FeedbackDate = DateTime.Now;
+            int rating = 0;
 
             while (string.IsNullOrWhiteSpace(feedbackDTO.ItemName))
             {
                 Console.Write("Enter the menu item Name for which you want to add feedback: ");
                 feedbackDTO.ItemName = Console.ReadLine();
+
+                ValidateInputString(feedbackDTO.ItemName, "item name");
             }
-            
-            while (string.IsNullOrWhiteSpace(feedbackDTO.Comment))
-            {
-                Console.Write("Enter your feedback Comment: ");
-                feedbackDTO.Comment = Console.ReadLine();
-            }
-            
+
+            Console.Write("Enter your feedback Comment: ");
+            feedbackDTO.Comment = Console.ReadLine();
+
             Console.Write("Enter your rating for the item[1-5]: ");
-            feedbackDTO.Rating = Convert.ToInt32(Console.ReadLine());
-            while(feedbackDTO.Rating < 1 || feedbackDTO.Rating > 5)
+            //feedbackDTO.Rating = Convert.ToInt32(Console.ReadLine());
+            //while (feedbackDTO.Rating < 1 || feedbackDTO.Rating > 5)
+            //{
+            //    Console.WriteLine("Invalid rating. Please enter a rating between 1 and 5");
+            //    feedbackDTO.Rating = Convert.ToInt32(Console.ReadLine());
+            //}
+            while (!int.TryParse(Console.ReadLine(), out rating) || rating < 1 || rating > 5)
             {
-                Console.WriteLine("Invalid rating. Please enter a rating between 1 and 5");
-                feedbackDTO.Rating = Convert.ToInt32(Console.ReadLine());
+                Console.WriteLine("Invalid rating. Please enter a rating between 1 and 5:");
             }
+            feedbackDTO.Rating = rating;
 
             string feedbackJson = JsonSerializer.Serialize(feedbackDTO);
             return $"addfeedback#{feedbackJson}";
         }
 
-        private static string BuildGetFeedbacksRequest()
+        private string BuildGetFeedbacksRequest()
         {
             string itemName = null;
 
-            while (string.IsNullOrEmpty(itemName))
+            while (string.IsNullOrWhiteSpace(itemName))
             {
                 Console.Write("Enter the menu item Name for which you want to see feedbacks: ");
                 itemName = Console.ReadLine();
+
+                ValidateInputString(itemName, "item name");
             }
 
             return $"getfeedbacks#{itemName}";
         }
 
-        private static string BuildAddRecommendationRequest()
+        private string BuildAddRecommendationRequest()
         {
             List<RecommendedMenuDTO> recommendations = new List<RecommendedMenuDTO>();
 
@@ -451,7 +528,6 @@ namespace RecommendationEngineClient
                 }
                 while (!int.TryParse(Console.ReadLine(), out numberOfItems) || numberOfItems <= 0);
 
-
                 for (int i = 0; i < numberOfItems; i++)
                 {
                     RecommendedMenuDTO recommendationDTO = new RecommendedMenuDTO();
@@ -463,6 +539,8 @@ namespace RecommendationEngineClient
                     {
                         Console.Write("Enter the menu item Name you want to recommend: ");
                         recommendationDTO.ItemName = Console.ReadLine();
+
+                        ValidateInputString(recommendationDTO.ItemName, "item name");
                     }
 
                     recommendations.Add(recommendationDTO);
@@ -479,7 +557,7 @@ namespace RecommendationEngineClient
             return $"addrecommendations#{recommendationsJson}";
         }
 
-        private static string BuildGetRecommendationForDateRequest()
+        private string BuildGetRecommendationForDateRequest()
         {
             DateTime dateTime = DateTime.Now.Date;
 
@@ -505,8 +583,8 @@ namespace RecommendationEngineClient
             return $"getrecommendations#{dateTime: yyyy-MM-dd}";
         }
 
-        private static string BuildUpdateRecommendationRequest()
-        {
+        private string BuildUpdateRecommendationRequest()
+        { 
             RecommendedMenuDTO recommendedMenu = new RecommendedMenuDTO();
 
             while(recommendedMenu.OldCategory == FoodCategory.None)
@@ -519,6 +597,8 @@ namespace RecommendationEngineClient
             {
                 Console.Write("Enter the name of the item you want to update: ");
                 recommendedMenu.OldItemName = Console.ReadLine();
+
+                ValidateInputString(recommendedMenu.OldItemName, "item name");
             }
 
             while (true)
@@ -534,8 +614,13 @@ namespace RecommendationEngineClient
                 switch (param)
                 {
                     case "name":
-                        Console.Write("Enter the new Food item name: ");
-                        recommendedMenu.ItemName = Console.ReadLine()?.Trim();
+                        while (string.IsNullOrWhiteSpace(recommendedMenu.ItemName))
+                        {
+                            Console.Write("Enter the new Food item name: ");
+                            recommendedMenu.ItemName = Console.ReadLine()?.Trim();
+
+                            ValidateInputString(recommendedMenu.ItemName, "item name");
+                        }
                         break;
 
                     case "category":
@@ -561,7 +646,7 @@ namespace RecommendationEngineClient
             return $"updaterecommendation#{recommendationsJson}";
         }
 
-        private static string BuildAddOrderRequest()
+        private string BuildAddOrderRequest()
         {
             OrderDTO orderDTO = new()
             {
@@ -594,7 +679,7 @@ namespace RecommendationEngineClient
 
                     if (!int.TryParse(Console.ReadLine(), out numberOfItems) || numberOfItems <= 0)
                     {
-                        Console.WriteLine("Invalid number of items. Please enter a positive integer.");
+                        Console.WriteLine("Invalid number of items. Please enter a valid number.");
                     }
                     else
                     {
@@ -628,7 +713,7 @@ namespace RecommendationEngineClient
             return $"addorder#{orderJson}";
         }
 
-        private static string BuildGetOrdersRequest() 
+        private string BuildGetOrdersRequest() 
         {
             DateTime dateTime = DateTime.Now.Date;
 
@@ -651,34 +736,44 @@ namespace RecommendationEngineClient
             return $"getorders#{dateTime: yyyy-MM-dd}";
         }
 
-        private static string BuildGetDiscardMenuRequest()
+        private string BuildGetDiscardMenuRequest()
         {
             return "getdiscardmenulist";
         }
 
-        private static string BuildDiscardMenuRequest()
+        private string BuildDiscardMenuRequest()
         {
             string itemName = null;
 
-            while (string.IsNullOrEmpty(itemName))
+            while (string.IsNullOrWhiteSpace(itemName))
             {
                 Console.Write("Enter the name of the item you want to remove from the menu list: ");
                 itemName = Console.ReadLine();
+
+                ValidateInputString(itemName, "item name");
             }
    
             return $"discardmenu#{itemName}";
         }
 
-        private static string BuildGetDetailedFeedbackRequest()
+        private string BuildGetDetailedFeedbackRequest()
         {
+            string itemName = null;
+
             while(true)
             {
                 Console.WriteLine("1. Enter '1' to notify the employees to provide feedback");
                 Console.WriteLine("2. Enter '2' to Get detailed feedback.");
                 string option = Console.ReadLine().Trim();
 
-                Console.Write("Enter the name of the item: ");
-                string itemName = Console.ReadLine().Trim();
+                while(string.IsNullOrWhiteSpace(itemName))
+                {
+                    Console.Write("Enter the name of the item: ");
+                    itemName = Console.ReadLine().Trim();
+
+                    ValidateInputString(itemName, "item name");
+                }
+                
 
                 if (option == "1")
                 {
@@ -695,7 +790,7 @@ namespace RecommendationEngineClient
             }
         }
 
-        private static string BuildProvideDetailedFeedbackRequest()
+        private string BuildProvideDetailedFeedbackRequest()
         {
             FeedbackDTO feedbackDTO = new FeedbackDTO();
             feedbackDTO.UserId = UserData.UserId;
@@ -708,6 +803,8 @@ namespace RecommendationEngineClient
             {
                 Console.Write("Enter the menu item Name for which you want to add feedback: ");
                 feedbackDTO.ItemName = Console.ReadLine();
+
+                ValidateInputString(feedbackDTO.ItemName, "item name");
             }
             
             while (string.IsNullOrWhiteSpace(comment))
@@ -731,7 +828,7 @@ namespace RecommendationEngineClient
             return $"providedetailedfeedback#{feedbackJson}";   
         }
 
-        private static string BuildUpdateProfileRequest()
+        private string BuildUpdateProfileRequest()
         {
             EmployeeProfileDTO profile = new EmployeeProfileDTO
             {
@@ -745,7 +842,7 @@ namespace RecommendationEngineClient
             return $"updateprofile#{profileJson}";
         }
 
-        private static FoodCategory ParseFoodCategory(string input)
+        private FoodCategory ParseFoodCategory(string input)
         {
             if (Enum.TryParse(input?.Trim(), true, out FoodCategory category))
             {
@@ -757,7 +854,7 @@ namespace RecommendationEngineClient
             }
         }
 
-        private static T GetEnumInput<T>(string prompt) where T : struct, Enum
+        private T GetEnumInput<T>(string prompt) where T : struct, Enum
         {
             while (true)
             {
@@ -774,7 +871,7 @@ namespace RecommendationEngineClient
             }
         }
 
-        private static FoodDiet SetFoodDiet(string input)
+        private FoodDiet SetFoodDiet(string input)
         {
             FoodDiet foodDiet;
 
@@ -795,6 +892,14 @@ namespace RecommendationEngineClient
             }
 
             return foodDiet;
+        }
+
+        private void ValidateInputString(string input, string displayParam)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                Console.WriteLine($"Please enter valid {displayParam}.");
+            }
         }
     }
 }

@@ -51,7 +51,8 @@ namespace RecommendationEngineServer.Context
             modelBuilder.Entity<RecommendedMenu>()
                 .HasOne(f => f.FoodItem)
                 .WithMany()
-                .HasForeignKey(f => f.FoodItemId);
+                .HasForeignKey(f => f.FoodItemId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<RecommendedMenu>()
                 .HasMany(rm => rm.OrderItems)

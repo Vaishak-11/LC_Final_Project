@@ -5,7 +5,7 @@ namespace RecommendationEngineClient
 {
     public class ResponseHandler
     {
-        public static void HandleResponse(ServerResponse response)
+        public void HandleResponse(ServerResponse response)
         {
             if (response.Name.ToLower() == "error")
             {
@@ -24,13 +24,14 @@ namespace RecommendationEngineClient
             }
         }
 
-        private static void HandleJsonElementResponse(JsonElement jsonElement)
+        private void HandleJsonElementResponse(JsonElement jsonElement)
         {
             switch (jsonElement.ValueKind)
             {
                 case JsonValueKind.Object:
                     Console.WriteLine(FormatJsonObject(jsonElement));
                     break;
+
                 case JsonValueKind.Array:
                     foreach (JsonElement element in jsonElement.EnumerateArray())
                     {
@@ -44,13 +45,14 @@ namespace RecommendationEngineClient
                         }
                     }
                     break;
+
                 default:
                     Console.WriteLine(jsonElement.ToString());
                     break;
             }
         }
 
-        private static string FormatJsonObject(JsonElement jsonObject)
+        private string FormatJsonObject(JsonElement jsonObject)
         {
             var formattedString = string.Empty;
 
