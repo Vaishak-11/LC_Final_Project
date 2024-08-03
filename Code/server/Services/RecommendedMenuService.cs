@@ -111,11 +111,6 @@ namespace RecommendationEngineServer.Services
                     return ResponseHelper.CreateResponse("GetRecommendedMenu", "No Menu is added to display.");
                 }
 
-                if (employee != null)
-                {
-                    recommendationList = SortRecommendationsByEmployeePreferences(recommendationList, employee);
-                }
-
                 response.Value = employee != null ? JsonSerializer.Serialize(await CreateDisplayMenuListForEmployee(recommendationList, employee))
                                         : JsonSerializer.Serialize(await CreateDisplayMenuList(recommendationList));
 
@@ -202,13 +197,11 @@ namespace RecommendationEngineServer.Services
             return selectedComments;
         }
 
-        private List<RecommendedMenu> SortRecommendationsByEmployeePreferences(List<RecommendedMenu> recommendationList, Employee employee)
+        private int GetTotalPreferenceScore(RecommendedMenu recommendedMenu, Employee employee)
         {
-            return recommendationList
-                .OrderByDescending(r => GetCuisinePreferenceScore(r, employee))
-                .ThenByDescending(r => GetSpiceLevelPreferenceScore(r, employee))
-                .ThenByDescending(r => GetDietPreferenceScore(r, employee))
-                .ToList();
+            return GetCuisinePreferenceScore(recommendedMenu, employee) +
+                   GetSpiceLevelPreferenceScore(recommendedMenu, employee) +
+                   GetDietPreferenceScore(recommendedMenu, employee);
         }
 
         private int GetCuisinePreferenceScore(RecommendedMenu recommendedMenu, Employee employee)
@@ -283,15 +276,17 @@ namespace RecommendationEngineServer.Services
                         FoodCategory = recommendedMenu.Category,
                         Rating = Math.Round(averageRating, 2),
                         OverallRating = overallRating,
-                        RecommendationReason = await GetRecommendationReason(recommendedMenu, employee)
+                        RecommendationReason = await GetRecommendationReason(recommendedMenu, employee),
+                        PreferenceScore = GetTotalPreferenceScore(recommendedMenu, employee)
                     });
                 }
             }
 
             return displayMenuListForEmployee
-                .OrderBy(d => d.FoodCategory)
-                .ThenByDescending(d => d.OverallRating)
-                .ToList();
+                     .OrderBy(d => d.FoodCategory)
+                     .ThenByDescending(d => d.PreferenceScore)
+                     .ThenByDescending(d => d.Rating)
+                     .ToList();
         }
 
         private async Task<string> GetRecommendationReason(RecommendedMenu recommendedMenu, Employee employee)
